@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === DARK (default, only theme) === */
+:root {
+  /* Surfaces — Discord spatial hierarchy */
+  --surface-0: #111113;        /* deepest bg — body, outermost shell */
+  --surface-1: #1a1b1e;        /* sidebar rail bg */
+  --surface-2: #222327;        /* main content area bg */
+  --surface-3: #2b2d31;        /* card / table row hover */
+  --surface-4: #313338;        /* elevated card, modal bg */
+  --surface-overlay: #0d0d0f;  /* modal backdrop */
+
+  /* Wedding accent — warm gold */
+  --accent-primary: #c9a84c;
+  --accent-primary-hover: #d4b565;
+  --accent-primary-subtle: rgba(201, 168, 76, 0.12);
+
+  /* Wedding accent — rose */
+  --accent-rose: #c4717a;
+  --accent-rose-subtle: rgba(196, 113, 122, 0.12);
+
+  /* Wedding accent — cream */
+  --accent-cream: #f0e6d3;
+
+  /* Text */
+  --text-primary: #f2f3f5;
+  --text-secondary: #b5bac1;
+  --text-muted: #6d6f78;
+  --text-inverse: #111113;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  /* Semantic */
+  --color-danger: #f04747;
+  --color-danger-subtle: rgba(240, 71, 71, 0.12);
+  --color-success: #43b581;
+  --color-success-subtle: rgba(67, 181, 129, 0.12);
+  --color-warning: #faa61a;
+  --color-warning-subtle: rgba(250, 166, 26, 0.12);
+
+  /* Focus ring */
+  --ring: rgba(201, 168, 76, 0.5);
+
+  /* Elevation shadows */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.8);
+
+  /* Category identity palette (consumed by src/lib/party-colors.ts) */
+  --chart-1: #c9a84c;
+  --chart-2: #c4717a;
+  --chart-3: #7a9cc4;
+  --chart-4: #7ac49c;
+  --chart-5: #c49c7a;
+}
+
+@layer base {
+  * {
+    border-color: var(--border-default);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.5;
+  }
+
+  /* Visible, consistent focus everywhere */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}

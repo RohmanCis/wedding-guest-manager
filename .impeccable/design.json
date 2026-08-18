@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-18T00:00:00.000Z",
+  "title": "Design System: Wedding Guest Manager",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Wedding Gold", "canonical": "#c9a84c", "tonalRamp": ["#3d3013", "#5c4a1d", "#7a6327", "#997d33", "#b89740", "#c9a84c", "#d4b565", "#e0cb85", "#ece0b0"] },
+      "accent-rose": { "role": "secondary", "displayName": "Blush Rose", "canonical": "#c4717a", "tonalRamp": ["#3e2125", "#5c3137", "#7a414a", "#99525c", "#b7626b", "#c4717a", "#d08a92", "#dda0a7", "#ecc4c9"] },
+      "accent-cream": { "role": "neutral", "displayName": "Warm Cream", "canonical": "#f0e6d3", "tonalRamp": ["#4a4234", "#6d6250", "#90826c", "#b3a28a", "#d0c2aa", "#e0d4bf", "#f0e6d3", "#f6efe2", "#fbf7ef"] },
+      "surface-0": { "role": "neutral", "displayName": "Surface 0 (deepest)", "canonical": "#111113", "tonalRamp": ["#111113", "#1a1b1e", "#222327", "#2b2d31", "#313338", "#3e4045", "#565860", "#83858c"] },
+      "text-muted": { "role": "neutral", "displayName": "Muted Text", "canonical": "#6d6f78", "tonalRamp": ["#26272b", "#34353a", "#434448", "#52535a", "#60616a", "#6d6f78", "#8a8c94", "#b5b6bc"] },
+      "chart-3": { "role": "tertiary", "displayName": "Identity Steel", "canonical": "#7a9cc4", "tonalRamp": ["#232f40", "#34455c", "#465c78", "#587395", "#6987ac", "#7a9cc4", "#96b1d3", "#a8c0dd", "#ccdaed"] },
+      "chart-4": { "role": "tertiary", "displayName": "Identity Sage", "canonical": "#7ac49c", "tonalRamp": ["#234030", "#345c46", "#46785c", "#589572", "#69ac87", "#7ac49c", "#96d3b1", "#a5dcc0", "#ccedda"] },
+      "chart-5": { "role": "tertiary", "displayName": "Identity Sand", "canonical": "#c49c7a", "tonalRamp": ["#402f23", "#5c4534", "#785c46", "#957358", "#ac8a69", "#c49c7a", "#d3b196", "#dec2a6", "#eddacc"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Fraunces Display", "purpose": "Brand mark (WG) and login title only — never content headings." },
+      "body": { "displayName": "Figtree Body", "purpose": "All operational UI: body, labels, buttons, tables, headings." }
+    },
+    "shadows": [
+      { "name": "shadow-1", "value": "0 1px 3px rgba(0,0,0,0.4)", "purpose": "Resting lift — stat cards, primary button at rest." },
+      { "name": "shadow-2", "value": "0 4px 12px rgba(0,0,0,0.5)", "purpose": "Hover response — primary button hover, elevated cards, popovers." },
+      { "name": "shadow-3", "value": "0 8px 24px rgba(0,0,0,0.6)", "purpose": "Interactive-card hover only." },
+      { "name": "shadow-modal", "value": "0 16px 48px rgba(0,0,0,0.8)", "purpose": "Dialogs above the blurred overlay." }
+    ],
+    "motion": [
+      { "name": "fade-in", "value": "150ms ease-out", "purpose": "Overlays and menus entering." },
+      { "name": "zoom-in", "value": "220ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Modal/popover entrance (fade + slight zoom)." },
+      { "name": "shimmer", "value": "1.6s infinite", "purpose": "Skeleton loading sweep." },
+      { "name": "row-hover", "value": "100ms", "purpose": "Table row background transition." },
+      { "name": "page-transition", "value": "0.22s easeOut, opacity 0→1 + y 16→0 (getVariants zeroes under reduced motion)", "purpose": "Per-page main content entrance via shared pageVariants." },
+      { "name": "modal-pop", "value": "0.18s easeOut, opacity 0→1 + scale 0.96→1 (scale dropped under reduced motion)", "purpose": "Dialog entrance/exit via AnimatePresence." },
+      { "name": "row-flash", "value": "1.5s, accent-gold-subtle → transparent", "purpose": "Newly saved guest row highlight (MotionTableRow)." },
+      { "name": "bar-fill", "value": "0.6s easeOut + 50ms stagger per row, width 0→value%", "purpose": "Analytics group bar-list fill entrance." },
+      { "name": "press-scale", "value": "100–150ms, scale 0.95 (buttons) / 0.90 (nav items)", "purpose": "Tailwind-only press feedback on interactive elements." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Wedding Gold action voice — one per view; shadow lifts on hover.",
+      "html": "<button class=\"ds-btn-primary\">Tambah Tamu</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border: none; border-radius: 8px; background: var(--accent-primary); color: var(--text-inverse); font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 600; box-shadow: var(--shadow-1); transition: all 150ms; cursor: pointer; } .ds-btn-primary:hover { background: var(--accent-primary-hover); box-shadow: var(--shadow-2); } .ds-btn-primary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral surfaced action; steps one surface up on hover.",
+      "html": "<button class=\"ds-btn-secondary\">Reset</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--surface-3); color: var(--text-primary); font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; transition: all 150ms; cursor: pointer; } .ds-btn-secondary:hover { background: var(--surface-4); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Quiet toolbar/icon action; gains a surface wash on hover.",
+      "html": "<button class=\"ds-btn-ghost\">Export CSV</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border: none; border-radius: 8px; background: transparent; color: var(--text-secondary); font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; transition: all 150ms; cursor: pointer; } .ds-btn-ghost:hover { background: var(--surface-3); color: var(--text-primary); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Solid red, confirm-delete dialogs only — never a row-level trigger.",
+      "html": "<button class=\"ds-btn-danger\">Hapus</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border: none; border-radius: 8px; background: var(--color-danger); color: #ffffff; font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; transition: all 150ms; cursor: pointer; } .ds-btn-danger:hover { opacity: 0.9; } .ds-btn-danger:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Surface-3 field, 36px; focus = strong border + gold ring; error = danger border.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Cari nama...\" />",
+      "css": ".ds-input { display: flex; width: 100%; height: 36px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--surface-3); color: var(--text-primary); font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 14px; transition: border-color 150ms; } .ds-input::placeholder { color: var(--text-muted); } .ds-input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-color: var(--border-strong); }"
+    },
+    {
+      "name": "Modal",
+      "kind": "card",
+      "refersTo": "card-elevated",
+      "description": "Surface-4 dialog, 16px radius, shadow-modal over blurred 80% overlay.",
+      "html": "<div class=\"ds-modal\"><div class=\"ds-modal-title\">Tambah Tamu</div><div class=\"ds-modal-desc\">Isi data tamu di bawah ini.</div></div>",
+      "css": ".ds-modal { max-width: 448px; width: 100%; padding: 24px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--surface-4); color: var(--text-primary); box-shadow: var(--shadow-modal); font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; } .ds-modal-title { font-size: 16px; font-weight: 600; color: var(--accent-cream); } .ds-modal-desc { margin-top: 4px; font-size: 12px; color: var(--text-secondary); }"
+    },
+    {
+      "name": "Party Badge",
+      "kind": "chip",
+      "refersTo": "badge-party",
+      "description": "Identity-coded party chip: color dot + subtle identity bg + contrast-safe text.",
+      "html": "<span class=\"ds-badge-party\"><span class=\"ds-badge-dot\"></span>Groom</span>",
+      "css": ".ds-badge-party { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; background: rgba(201, 168, 76, 0.15); color: #d4b565; font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 500; white-space: nowrap; } .ds-badge-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--chart-1); }"
+    },
+    {
+      "name": "Group Badge",
+      "kind": "chip",
+      "refersTo": "badge-group",
+      "description": "Group chip colored via colorForGroup(name): identity dot, dot at 15% alpha background, lightened contrast-safe text — applied inline (dynamic arbitrary classes are invisible to Tailwind's JIT). Values shown for Rekan Kerja.",
+      "html": "<span class=\"ds-badge-group\"><span class=\"ds-badge-dot\"></span>Rekan Kerja</span>",
+      "css": ".ds-badge-group { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; background: #5B8CDB26; color: #A5C0EB; font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 500; white-space: nowrap; transition: background-color 200ms, color 200ms; } .ds-badge-dot { width: 6px; height: 6px; border-radius: 9999px; background: #5B8CDB; }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "card-flat",
+      "description": "Flat card with 3px left identity accent bar; tabular cream value.",
+      "html": "<div class=\"ds-stat\"><span class=\"ds-stat-bar\"></span><div class=\"ds-stat-label\">Total Tamu</div><div class=\"ds-stat-value\">128</div></div>",
+      "css": ".ds-stat { position: relative; overflow: hidden; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-3); box-shadow: var(--shadow-1); font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; } .ds-stat-bar { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: var(--chart-1); } .ds-stat-label { font-size: 12px; font-weight: 500; color: var(--text-muted); } .ds-stat-value { margin-top: 4px; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent-cream); }"
+    },
+    {
+      "name": "Nav Rail",
+      "kind": "nav",
+      "description": "Desktop (lg+) 72px icon rail; active = gold on gold-subtle wash; logout pinned bottom. Below lg this is replaced by the Bottom Nav.",
+      "html": "<nav class=\"ds-rail\"><span class=\"ds-rail-brand\">WG</span><a class=\"ds-rail-item ds-rail-active\" href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg></a><a class=\"ds-rail-item\" href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\".5\"/></svg></a></nav>",
+      "css": ".ds-rail { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 72px; padding: 16px 0; border-right: 1px solid var(--border-subtle); background: var(--surface-1); } .ds-rail-brand { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 9999px; background: var(--surface-3); color: var(--accent-primary); font-family: var(--font-display), Georgia, serif; font-size: 14px; font-weight: 600; } .ds-rail-item { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; color: var(--text-muted); transition: all 150ms; } .ds-rail-item:hover { background: var(--surface-3); color: var(--text-secondary); } .ds-rail-active, .ds-rail-active:hover { background: var(--accent-primary-subtle); color: var(--accent-primary); }"
+    },
+    {
+      "name": "Bottom Nav",
+      "kind": "nav",
+      "description": "Mobile-only (<lg) fixed bottom bar, 56px: 3 routes + logout button, 44x44 targets, gold active with 4px dot, 10px labels, active:scale-90 press.",
+      "html": "<nav class=\"ds-bnav\"><a class=\"ds-bnav-item ds-bnav-active\" href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg><span class=\"ds-bnav-label\">Tamu</span><span class=\"ds-bnav-dot\"></span></a><a class=\"ds-bnav-item\" href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\".5\"/></svg><span class=\"ds-bnav-label\">Kategori</span><span class=\"ds-bnav-dot ds-bnav-dot-off\"></span></a></nav>",
+      "css": ".ds-bnav { display: flex; align-items: center; justify-content: space-around; height: 56px; padding: 0 16px; border-top: 1px solid var(--border-subtle); background: var(--surface-1); } .ds-bnav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 44px; height: 44px; color: var(--text-muted); text-decoration: none; transition: transform 100ms; } .ds-bnav-item:active { transform: scale(0.9); } .ds-bnav-active { color: var(--accent-primary); } .ds-bnav-label { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 10px; font-weight: 500; line-height: 1; } .ds-bnav-dot { width: 4px; height: 4px; border-radius: 9999px; background: var(--accent-primary); } .ds-bnav-dot-off { background: transparent; }"
+    },
+    {
+      "name": "Sticky Action Bar",
+      "kind": "custom",
+      "description": "Mobile-only (<sm) bar pinned directly above the bottom nav (bottom: 56px) holding Export CSV + Tambah Tamu; sm+ shows these actions in the top bar.",
+      "html": "<div class=\"ds-actionbar\"><button class=\"ds-actionbar-secondary\">Export CSV</button><button class=\"ds-actionbar-primary\">Tambah Tamu</button></div>",
+      "css": ".ds-actionbar { display: flex; justify-content: flex-end; gap: 8px; padding: 12px; border-top: 1px solid var(--border-subtle); background: var(--surface-2); } .ds-actionbar-primary { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border: none; border-radius: 6px; background: var(--accent-primary); color: var(--text-inverse); font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 600; box-shadow: var(--shadow-1); cursor: pointer; } .ds-actionbar-secondary { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--surface-3); color: var(--text-primary); font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Warm Command Center",
+    "overview": "A single-admin operational tool that borrows Discord's spatial discipline and wraps it in wedding warmth. The structure is pure utility — a fixed icon rail, a sticky top bar, dense tables — but the color identity is gold, rose, and cream, not corporate blue. Dark is the only theme, hard-coded with no toggle. Density is tuned for manual data entry: compact rows, hover-reveal actions, keyboard-friendly forms, and a fast return to the list after every save. Expression lives in the accents; the working surfaces stay quiet.",
+    "keyCharacteristics": [
+      "Dark-by-default, permanently; no theme switcher anywhere",
+      "Discord spatial hierarchy: 72px icon rail + sticky 48px top bar + content surface",
+      "Gold/rose/cream accent layer on a five-step neutral surface scale",
+      "Admin-optimized density: compact tables, hover-reveal row actions, one primary action per view",
+      "Fraunces reserved for the brand mark only; Figtree does all the work"
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Wedding Gold is the only color that ever means \"act\" — one primary action per view. Its rarity is the point.", "section": "colors" },
+      { "name": "The Identity Rule", "body": "Category color is always resolved through colorFor(kind, name). A category means the same color on every page, forever — never rank, never order, never inline hex.", "section": "colors" },
+      { "name": "The Brand-Only Display Rule", "body": "Fraunces appears only in the brand mark and login title. Page headings, card titles, and content are always Figtree medium/semibold — never display type in content.", "section": "typography" },
+      { "name": "The State-Responsive Elevation Rule", "body": "Elevation increases only in response to state. Body and resting content carry no shadow; cards hold shadow-1/shadow-2; hover may step up one level; modals alone use shadow-modal.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use CSS variables / Tailwind token classes for every color — never raw hex in components (the one sanctioned exception: party-colors.ts badge hexes).",
+      "Do resolve every category color through party-colors.ts colorFor(kind, name) — badges, dots, stat accents, chart slices, all of them.",
+      "Do always use colorForGroup() for group color resolution — never inline group hex values.",
+      "Do keep table row actions on the hover-reveal pattern (opacity transition, always visible to keyboard focus-within and touch).",
+      "Do keep one Wedding Gold primary action per view; subordinate actions go secondary or ghost.",
+      "Do reserve solid Danger red for confirmation dialogs; row-level delete triggers are ghost danger icons.",
+      "Do give every async surface a loading state with reserved space (skeleton or spinner, no layout jump)."
+    ],
+    "donts": [
+      "Don't use Fraunces anywhere but the brand mark and login title — content headings are Figtree, always.",
+      "Don't add light mode, a theme toggle, or system-preference fallback without an explicit product decision; dark is the product.",
+      "Don't introduce a fourth accent color; the wedding layer is gold, rose, cream — semantics (danger/success/warning) are states, not accents.",
+      "Don't inline party or group hex values anywhere; identity comes from colorFor or nothing.",
+      "Don't style buttons, inputs, or modals page-locally; extend src/components/ui/ instead.",
+      "Don't use Muted Text for data-bearing content (counts, values, names) — it is for placeholders and hints, and sits near the contrast floor."
+    ]
+  }
+}
