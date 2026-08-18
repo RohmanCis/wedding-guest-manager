@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ["node:sqlite"]
+    optimizePackageImports: ["lucide-react"]
   }
 };
 

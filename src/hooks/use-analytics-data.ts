@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiGet } from "@/lib/client";
 import { partyHex, colorForGroup } from "@/lib/party-colors";
 import type { PieData } from "@/components/charts/pie-context";
 
-interface AnalyticsGuest {
+export interface AnalyticsGuest {
   id: string;
   party_name: string;
   group_name: string;
@@ -27,19 +27,42 @@ function aggregate(
 export function useAnalyticsData({
   search,
   partyId,
-  groupId
+  groupId,
+  initialGuests
 }: {
   search: string;
   partyId: string;
   groupId: string;
+  initialGuests?: AnalyticsGuest[];
 }) {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialGuests);
   const [error, setError] = useState("");
-  const [totalGuests, setTotalGuests] = useState(0);
-  const [byParty, setByParty] = useState<PieData[]>([]);
-  const [byGroup, setByGroup] = useState<PieData[]>([]);
+  const [totalGuests, setTotalGuests] = useState(initialGuests?.length ?? 0);
+  const [byParty, setByParty] = useState<PieData[]>(() =>
+    initialGuests
+      ? aggregate(initialGuests, "party_name").map((d) => ({
+          ...d,
+          color: partyHex(d.label)
+        }))
+      : []
+  );
+  const [byGroup, setByGroup] = useState<PieData[]>(() =>
+    initialGuests
+      ? aggregate(initialGuests, "group_name").map((d) => ({
+          ...d,
+          color: colorForGroup(d.label).dot
+        }))
+      : []
+  );
+
+  // SSR data is already on screen — skip the redundant initial fetch.
+  const skipInitialFetch = useRef(!!initialGuests);
 
   useEffect(() => {
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
+      return;
+    }
     let active = true;
     setIsLoading(true);
     setError("");

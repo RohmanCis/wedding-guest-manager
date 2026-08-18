@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { apiGet, apiSend, ApiError } from "@/lib/client";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
@@ -11,15 +11,17 @@ import {
   SelectContent,
   SelectItem
 } from "@/components/ui/select";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter
-} from "@/components/ui/modal";
-import { Alert } from "@/components/ui/alert";
-import {
+import dynamic from "next/dynamic";
+const Modal = dynamic(() => import("@/components/ui/modal").then((m) => m.Modal), { ssr: false });
+const ModalContent = dynamic(() => import("@/components/ui/modal").then((m) => m.ModalContent), { ssr: false });
+const ModalHeader = dynamic(() => import("@/components/ui/modal").then((m) => m.ModalHeader), { ssr: false });
+const ModalBody = dynamic(() => import("@/components/ui/modal").then((m) => m.ModalBody), { ssr: false });
+const ModalFooter = dynamic(() => import("@/components/ui/modal").then((m) => m.ModalFooter), { ssr: false });
+const DropdownMenu = dynamic(() => import("@/components/ui/dropdown-menu").then((m) => m.DropdownMenu), { ssr: false });
+const DropdownMenuTrigger = dynamic(() => import("@/components/ui/dropdown-menu").then((m) => m.DropdownMenuTrigger), { ssr: false });
+const DropdownMenuContent = dynamic(() => import("@/components/ui/dropdown-menu").then((m) => m.DropdownMenuContent), { ssr: false });
+const DropdownMenuItem = dynamic(() => import("@/components/ui/dropdown-menu").then((m) => m.DropdownMenuItem), { ssr: false });
+import { Alert } from "@/components/ui/alert";import {
   TableContainer,
   Table,
   TableHeader,
@@ -27,24 +29,14 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  TableActions,
-  MotionTableRow
+  TableActions
 } from "@/components/ui/table";
 import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableSkeleton } from "@/components/ui/loading";
-import { CategoryBadge, CategoryDot } from "@/components/ui/category-badge";
+import { CategoryBadge, CategoryDot, CategoryIcon } from "@/components/ui/category-badge";
 import { colorFor } from "@/lib/party-colors";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem
-} from "@/components/ui/dropdown-menu";
 import { TopBar } from "@/components/app-shell";
-import { motion, AnimatePresence } from "motion/react";
-import { getVariants, getRowVariants } from "@/lib/animation-variants";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import {
   Search,
@@ -80,6 +72,7 @@ interface Guest {
   address: string;
   party_id: string;
   group_id: string;
+  pax: number;
   party_name: string;
   group_name: string;
 }
@@ -89,20 +82,36 @@ interface FormState {
   address: string;
   partyId: string;
   groupId: string;
+  pax: number;
 }
 
-const EMPTY: FormState = { name: "", address: "", partyId: "", groupId: "" };
+const EMPTY: FormState = {
+  name: "",
+  address: "",
+  partyId: "",
+  groupId: "",
+  pax: 1
+};
 const ALL = "__all__";
+const PAX_OPTIONS = [1, 2, 3, 4];
 
-export default function GuestsPage() {
-  const [guests, setGuests] = useState<Guest[]>([]);
-  const [parties, setParties] = useState<Ref[]>([]);
-  const [groups, setGroups] = useState<Ref[]>([]);
+export default function GuestsView({
+  initialGuests,
+  initialParties,
+  initialGroups
+}: {
+  initialGuests: Guest[];
+  initialParties: Ref[];
+  initialGroups: Ref[];
+}) {
+  const [guests, setGuests] = useState<Guest[]>(initialGuests);
+  const [parties, setParties] = useState<Ref[]>(initialParties);
+  const [groups, setGroups] = useState<Ref[]>(initialGroups);
   const [search, setSearch] = useState("");
   const [partyId, setPartyId] = useState("");
   const [groupId, setGroupId] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<FormState | null>(null);
   const [formError, setFormError] = useState("");
   const [dupId, setDupId] = useState<string | null>(null);
@@ -111,10 +120,16 @@ export default function GuestsPage() {
   const [deleting, setDeleting] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [newGuestId, setNewGuestId] = useState<string | null>(null);
-  const reducedMotion = useReducedMotion();
   const isMobile = useIsMobile();
   const [currentPage, setCurrentPage] = useState(1);
   const [showAll, setShowAll] = useState(false);
+  // First client paint shows SSR data without enter animations (LCP un-gate);
+  // later renders (filter changes, new guest) animate rows in via CSS.
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(guests.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -143,11 +158,18 @@ export default function GuestsPage() {
     );
   }, []);
 
+  // Debounce the query fed to fetches; input value stays immediate.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const loadGuests = useCallback(async () => {
     setLoading(true);
     setError("");
     const qs = new URLSearchParams();
-    if (search.trim()) qs.set("search", search.trim());
+    if (debouncedSearch.trim()) qs.set("search", debouncedSearch.trim());
     if (partyId) qs.set("partyId", partyId);
     if (groupId) qs.set("groupId", groupId);
     try {
@@ -158,13 +180,15 @@ export default function GuestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, partyId, groupId]);
+  }, [debouncedSearch, partyId, groupId]);
 
+  // SSR data is already on screen — skip the redundant initial fetch.
+  const skipInitialFetch = useRef(true);
   useEffect(() => {
-    loadRefs();
-  }, [loadRefs]);
-
-  useEffect(() => {
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
+      return;
+    }
     loadGuests();
   }, [loadGuests]);
 
@@ -249,7 +273,8 @@ export default function GuestsPage() {
       name: g.name,
       address: g.address,
       partyId: g.party_id,
-      groupId: g.group_id
+      groupId: g.group_id,
+      pax: g.pax
     });
   }
 
@@ -317,6 +342,9 @@ export default function GuestsPage() {
   }
 
   const total = parties.reduce((sum, p) => sum + (p.used ?? 0), 0);
+  // ponytail: pax sum over the currently loaded guest list — reflects active
+  // filters; make /api/categories return a global pax sum if this bothers later.
+  const totalPax = guests.reduce((sum, g) => sum + g.pax, 0);
 
   const topActions = (
     <>
@@ -356,12 +384,7 @@ export default function GuestsPage() {
         <div className="hidden items-center gap-2 sm:flex">{topActions}</div>
       </TopBar>
 
-      <motion.main
-        variants={getVariants(!!reducedMotion)}
-        initial="initial"
-        animate="animate"
-        className="space-y-5 p-6 pb-24 sm:pb-6"
-      >
+      <main className="space-y-5 p-6 pb-24 sm:pb-6">
         <section
           aria-label="Guest summary"
           className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
@@ -372,10 +395,21 @@ export default function GuestsPage() {
             accent="bg-accent-gold"
             className="col-span-2 sm:col-span-1"
           />
+          <StatCard
+            label="Total Pax"
+            value={totalPax}
+            accent="bg-accent-rose"
+            className="col-span-2 sm:col-span-1"
+          />
           {parties.map((p) => (
             <StatCard
               key={p.id}
-              label={p.name}
+              label={
+                <span className="inline-flex items-center gap-1.5">
+                  <CategoryIcon kind="party" name={p.name} className="size-3.5" />
+                  {p.name}
+                </span>
+              }
               value={p.used ?? 0}
               accent={colorFor(p.name).dot}
             />
@@ -409,6 +443,7 @@ export default function GuestsPage() {
                 <SelectItem key={p.id} value={p.id}>
                   <span className="flex items-center gap-2">
                     <CategoryDot kind="party" name={p.name} />
+                    <CategoryIcon kind="party" name={p.name} />
                     {p.name}
                   </span>
                 </SelectItem>
@@ -428,6 +463,7 @@ export default function GuestsPage() {
                 <SelectItem key={g.id} value={g.id}>
                   <span className="flex items-center gap-2">
                     <CategoryDot kind="group" name={g.name} />
+                    <CategoryIcon kind="group" name={g.name} />
                     {g.name}
                   </span>
                 </SelectItem>
@@ -491,6 +527,7 @@ export default function GuestsPage() {
                   <TableRow className="bg-transparent hover:bg-transparent">
                     <TableHead className="w-10">No.</TableHead>
                     <TableHead>Nama</TableHead>
+                    <TableHead className="w-14 text-center">Jumlah</TableHead>
                     <TableHead className="hidden sm:table-cell">Alamat</TableHead>
                     <TableHead>Party</TableHead>
                     <TableHead>Group</TableHead>
@@ -500,41 +537,29 @@ export default function GuestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <AnimatePresence initial={false} mode="wait">
-                    {pageGuests.map((g, i) => (
-                      <MotionTableRow
-                        key={newGuestId === g.id ? `${g.id}-new` : g.id}
-                        id={`guest-row-${g.id}`}
-                        initial={getRowVariants(!!reducedMotion).initial}
-                        animate={{
-                          ...getRowVariants(!!reducedMotion).animate,
-                          ...(newGuestId === g.id
-                            ? {
-                                backgroundColor: [
-                                  "rgba(201, 168, 76, 0.12)",
-                                  "rgba(201, 168, 76, 0)"
-                                ]
-                              }
-                            : {})
-                        }}
-                        exit={getRowVariants(!!reducedMotion).exit}
-                        transition={
-                          newGuestId === g.id
-                            ? { duration: 1.5, ease: "easeOut" }
-                            : getRowVariants(!!reducedMotion).animate.transition
-                        }
-                        onAnimationComplete={() => {
-                          if (newGuestId === g.id) setNewGuestId(null);
-                        }}
-                        className={cn(
-                          highlightId === g.id &&
-                            "bg-accent-gold-subtle hover:bg-accent-gold-subtle"
-                        )}
-                      >
+                  {pageGuests.map((g, i) => (
+                    <TableRow
+                      key={newGuestId === g.id ? `${g.id}-new` : g.id}
+                      id={`guest-row-${g.id}`}
+                      className={cn(
+                        mounted && "animate-row-in",
+                        newGuestId === g.id && "animate-row-flash",
+                        highlightId === g.id &&
+                          "bg-accent-gold-subtle hover:bg-accent-gold-subtle"
+                      )}
+                      onAnimationEnd={
+                        newGuestId === g.id
+                          ? () => setNewGuestId(null)
+                          : undefined
+                      }
+                    >
                         <TableCell className="text-muted tabular-nums">
                           {showAll ? i + 1 : (safePage - 1) * PAGE_SIZE + i + 1}
                         </TableCell>
                         <TableCell className="font-medium">{g.name}</TableCell>
+                        <TableCell className="text-center tabular-nums">
+                          {g.pax > 1 ? `×${g.pax}` : g.pax}
+                        </TableCell>
                         <TableCell className="hidden max-w-64 truncate text-secondary sm:table-cell">
                           {g.address}
                         </TableCell>
@@ -565,9 +590,8 @@ export default function GuestsPage() {
                             </Button>
                           </TableActions>
                         </TableCell>
-                      </MotionTableRow>
+                      </TableRow>
                     ))}
-                  </AnimatePresence>
                 </TableBody>
               </Table>
             </div>
@@ -686,6 +710,25 @@ export default function GuestsPage() {
                       }
                     />
                   </Field>
+                  <Field label="Jumlah Orang" htmlFor="guest-pax">
+                    <Select
+                      value={String(form.pax)}
+                      onValueChange={(v) =>
+                        setForm({ ...form, pax: Number(v) })
+                      }
+                    >
+                      <SelectTrigger id="guest-pax">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAX_OPTIONS.map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
                   <Field label="Party" htmlFor="guest-party">
                     <Select
                       value={form.partyId}
@@ -699,6 +742,7 @@ export default function GuestsPage() {
                           <SelectItem key={p.id} value={p.id}>
                             <span className="flex items-center gap-2">
                               <CategoryDot kind="party" name={p.name} />
+                              <CategoryIcon kind="party" name={p.name} />
                               {p.name}
                             </span>
                           </SelectItem>
@@ -719,6 +763,7 @@ export default function GuestsPage() {
                           <SelectItem key={g.id} value={g.id}>
                             <span className="flex items-center gap-2">
                               <CategoryDot kind="group" name={g.name} />
+                              <CategoryIcon kind="group" name={g.name} />
                               {g.name}
                             </span>
                           </SelectItem>
@@ -779,7 +824,7 @@ export default function GuestsPage() {
             </ModalFooter>
           </ModalContent>
         </Modal>
-      </motion.main>
+      </main>
 
       {/* Mobile-only sticky action bar; sm+ shows actions in the TopBar.
           Sits above the 56px bottom nav (bottom-14), which is hidden on lg. */}

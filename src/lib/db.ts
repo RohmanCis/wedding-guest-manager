@@ -1,60 +1,55 @@
-import { createRequire } from "node:module";
-import path from "node:path";
-import fs from "node:fs";
-import type { DatabaseSync } from "node:sqlite";
+import { randomUUID } from "node:crypto";
+import postgres from "postgres";
 
-const require = createRequire(__filename);
-const DatabaseSyncCtor = (
-  require("node:sqlite") as typeof import("node:sqlite")
-).DatabaseSync;
-
-const DB_PATH =
-  process.env.GUEST_DB_PATH ||
-  path.join(process.cwd(), ".data", "guest-manager.db");
-
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-
-let _db: DatabaseSync | null = null;
-
-export function getDb(): DatabaseSync {
-  if (_db) return _db;
-  const db = new DatabaseSyncCtor(DB_PATH);
-  db.exec("PRAGMA journal_mode = WAL;");
-  db.exec("PRAGMA foreign_keys = ON;");
-  migrate(db);
-  seed(db);
-  _db = db;
-  return db;
-}
-
-export function resetDb(): void {
-  const db = getDb();
-  db.exec(
-    "DELETE FROM guests; DELETE FROM parties; DELETE FROM groups;"
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL is required (Postgres, e.g. Supabase pooler). See DEPLOYMENT.md."
   );
-  seed(db);
 }
 
-// ponytail: node:sqlite (built-in, no native build) chosen because no Postgres
-// server and no C++ toolchain are available here. Swap getDb()+migrate() for a
-// pg client to move to PostgreSQL; the normalized-name UNIQUE index maps
-// directly to a Postgres generated column + unique index.
-function migrate(db: DatabaseSync) {
-  db.exec(`
+// prepare:false + max:1 — required behind Supabase's PgBouncer transaction
+// pooler and correct for Vercel serverless instances.
+export const sql = postgres(DATABASE_URL, { prepare: false, max: 1 });
+
+export async function getDb(): Promise<typeof sql> {
+  await init;
+  return sql;
+}
+
+export async function resetDb(): Promise<void> {
+  await getDb();
+  await sql`DELETE FROM guests`;
+  await sql`DELETE FROM parties`;
+  await sql`DELETE FROM groups`;
+  await seed();
+}
+
+export function cryptoId(): string {
+  return randomUUID();
+}
+
+const init = (async () => {
+  await migrate();
+  await seed();
+})();
+
+async function migrate() {
+  await sql`
     CREATE TABLE IF NOT EXISTS parties (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
-    );
-
+    )`;
+  await sql`
     CREATE TABLE IF NOT EXISTS groups (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
-    );
-
+    )`;
+  await sql`
     CREATE TABLE IF NOT EXISTS guests (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -62,11 +57,11 @@ function migrate(db: DatabaseSync) {
       address TEXT NOT NULL,
       party_id TEXT NOT NULL REFERENCES parties(id) ON DELETE RESTRICT,
       group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE RESTRICT,
+      pax INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       UNIQUE (name_norm)
-    );
-  `);
+    )`;
 }
 
 const INITIAL_PARTIES = ["Groom", "Bride", "Groom Family", "Bride Family"];
@@ -81,29 +76,21 @@ const INITIAL_GROUPS = [
   "Lainnya"
 ];
 
-export function cryptoId(): string {
-  const { randomUUID } = require("node:crypto");
-  return randomUUID();
-}
-
-function seed(db: DatabaseSync) {
-  const now = new Date().toISOString();
-  const pCount = (
-    db.prepare("SELECT COUNT(*) AS c FROM parties").get() as { c: number }
-  ).c;
+async function seed() {
+  const [{ count: pCount }] = await sql`SELECT COUNT(*)::int AS count FROM parties`;
   if (pCount === 0) {
-    const ins = db.prepare(
-      "INSERT INTO parties (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)"
-    );
-    for (const name of INITIAL_PARTIES) ins.run(cryptoId(), name, now, now);
+    const now = new Date().toISOString();
+    for (const name of INITIAL_PARTIES) {
+      await sql`INSERT INTO parties (id, name, created_at, updated_at)
+        VALUES (${cryptoId()}, ${name}, ${now}, ${now})`;
+    }
   }
-  const gCount = (
-    db.prepare("SELECT COUNT(*) AS c FROM groups").get() as { c: number }
-  ).c;
+  const [{ count: gCount }] = await sql`SELECT COUNT(*)::int AS count FROM groups`;
   if (gCount === 0) {
-    const ins = db.prepare(
-      "INSERT INTO groups (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)"
-    );
-    for (const name of INITIAL_GROUPS) ins.run(cryptoId(), name, now, now);
+    const now = new Date().toISOString();
+    for (const name of INITIAL_GROUPS) {
+      await sql`INSERT INTO groups (id, name, created_at, updated_at)
+        VALUES (${cryptoId()}, ${name}, ${now}, ${now})`;
+    }
   }
 }

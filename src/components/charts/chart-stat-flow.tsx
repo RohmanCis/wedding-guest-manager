@@ -38,11 +38,10 @@ function formatStatValue(
 }
 
 function useNumberFlowElementReady(): boolean {
-  const [ready, setReady] = useState(
-    () =>
-      typeof customElements !== "undefined" &&
-      Boolean(customElements.get("number-flow-react"))
-  );
+  // Always init false: a lazy customElements.get() read here returns true on
+  // the client (module-scope define) but false on the server → hydration
+  // mismatch (#418). The effect below flips ready post-mount instead.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (ready) {

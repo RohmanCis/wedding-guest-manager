@@ -45,7 +45,7 @@ function ModalContent({
               forceMount
               asChild
               className={cn(
-                "fixed left-1/2 top-1/2 z-50 w-full rounded-2xl border border-default bg-surface-4 p-6 text-primary shadow-modal",
+                "fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] rounded-2xl border border-default bg-surface-4 p-6 text-primary shadow-modal",
                 size === "sm" ? "max-w-sm" : "max-w-md",
                 className
               )}

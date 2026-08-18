@@ -1,4 +1,4 @@
-import { getDb, cryptoId } from "./db";
+import { getDb, sql, cryptoId } from "./db";
 import { NotFoundError, ValidationError } from "./normalize";
 
 export interface CategoryRow {
@@ -8,54 +8,95 @@ export interface CategoryRow {
   updated_at: string;
 }
 
-function list(table: string): CategoryRow[] {
-  return getDb()
-    .prepare(`SELECT * FROM ${table} ORDER BY name COLLATE NOCASE ASC`)
-    .all() as CategoryRow[];
+type Table = "parties" | "groups";
+
+async function list(table: Table): Promise<CategoryRow[]> {
+  await getDb();
+  const rows =
+    table === "parties"
+      ? await sql<CategoryRow[]>`SELECT * FROM parties ORDER BY name ASC`
+      : await sql<CategoryRow[]>`SELECT * FROM groups ORDER BY name ASC`;
+  return rows.map((r) => ({ ...r }));
 }
 
-function create(table: string, name: string): CategoryRow {
+async function create(table: Table, name: string): Promise<CategoryRow> {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new ValidationError("name", "Name is required.");
-  const db = getDb();
-  const dup = db.prepare(`SELECT id FROM ${table} WHERE name = ?`).get(trimmed);
-  if (dup) throw new ValidationError("name", "Name already exists.");
+  await getDb();
+  const dup =
+    table === "parties"
+      ? await sql`SELECT id FROM parties WHERE name = ${trimmed}`
+      : await sql`SELECT id FROM groups WHERE name = ${trimmed}`;
+  if (dup.length) throw new ValidationError("name", "Name already exists.");
   const id = cryptoId();
   const now = new Date().toISOString();
-  db.prepare(
-    `INSERT INTO ${table} (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`
-  ).run(id, trimmed, now, now);
-  return db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id) as CategoryRow;
+  if (table === "parties") {
+    await sql`INSERT INTO parties (id, name, created_at, updated_at)
+      VALUES (${id}, ${trimmed}, ${now}, ${now})`;
+  } else {
+    await sql`INSERT INTO groups (id, name, created_at, updated_at)
+      VALUES (${id}, ${trimmed}, ${now}, ${now})`;
+  }
+  return getById(table, id);
 }
 
-function rename(table: string, id: string, name: string): CategoryRow {
+async function getById(table: Table, id: string): Promise<CategoryRow> {
+  const rows =
+    table === "parties"
+      ? await sql<CategoryRow[]>`SELECT * FROM parties WHERE id = ${id}`
+      : await sql<CategoryRow[]>`SELECT * FROM groups WHERE id = ${id}`;
+  if (!rows.length) throw new NotFoundError("Category not found.");
+  return { ...rows[0] };
+}
+
+async function rename(
+  table: Table,
+  id: string,
+  name: string
+): Promise<CategoryRow> {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new ValidationError("name", "Name is required.");
-  const db = getDb();
-  const row = db.prepare(`SELECT id FROM ${table} WHERE id = ?`).get(id);
-  if (!row) throw new NotFoundError("Category not found.");
-  const dup = db
-    .prepare(`SELECT id FROM ${table} WHERE name = ? AND id != ?`)
-    .get(trimmed, id);
-  if (dup) throw new ValidationError("name", "Name already exists.");
+  await getDb();
+  const row =
+    table === "parties"
+      ? await sql`SELECT id FROM parties WHERE id = ${id}`
+      : await sql`SELECT id FROM groups WHERE id = ${id}`;
+  if (!row.length) throw new NotFoundError("Category not found.");
+  const dup =
+    table === "parties"
+      ? await sql`SELECT id FROM parties WHERE name = ${trimmed} AND id != ${id}`
+      : await sql`SELECT id FROM groups WHERE name = ${trimmed} AND id != ${id}`;
+  if (dup.length) throw new ValidationError("name", "Name already exists.");
   const now = new Date().toISOString();
-  db.prepare(`UPDATE ${table} SET name = ?, updated_at = ? WHERE id = ?`).run(
-    trimmed,
-    now,
-    id
-  );
-  return db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id) as CategoryRow;
+  if (table === "parties") {
+    await sql`UPDATE parties SET name = ${trimmed}, updated_at = ${now} WHERE id = ${id}`;
+  } else {
+    await sql`UPDATE groups SET name = ${trimmed}, updated_at = ${now} WHERE id = ${id}`;
+  }
+  return getById(table, id);
 }
 
-function remove(table: string, id: string): void {
-  const db = getDb();
-  const row = db.prepare(`SELECT id FROM ${table} WHERE id = ?`).get(id);
-  if (!row) throw new NotFoundError("Category not found.");
+async function remove(table: Table, id: string): Promise<void> {
+  await getDb();
+  const row =
+    table === "parties"
+      ? await sql`SELECT id FROM parties WHERE id = ${id}`
+      : await sql`SELECT id FROM groups WHERE id = ${id}`;
+  if (!row.length) throw new NotFoundError("Category not found.");
   // ON DELETE RESTRICT makes this fail if referenced; explicit message:
   try {
-    db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id);
-  } catch (e: any) {
-    if (String(e.message).includes("FOREIGN KEY")) {
+    if (table === "parties") {
+      await sql`DELETE FROM parties WHERE id = ${id}`;
+    } else {
+      await sql`DELETE FROM groups WHERE id = ${id}`;
+    }
+  } catch (e) {
+    if (
+      typeof e === "object" &&
+      e !== null &&
+      "code" in e &&
+      (e as { code?: string }).code === "23503"
+    ) {
       throw new ValidationError(
         "id",
         "Cannot delete: category is still used by guests. Reassign guests first."
@@ -65,23 +106,29 @@ function remove(table: string, id: string): void {
   }
 }
 
-function refCount(table: string, id: string): number {
-  const col = table === "parties" ? "party_id" : "group_id";
-  const r = getDb()
-    .prepare(`SELECT COUNT(*) AS c FROM guests WHERE ${col} = ?`)
-    .get(id) as { c: number };
-  return r.c;
+async function refCount(table: Table, id: string): Promise<number> {
+  const col = table === "parties" ? sql`party_id` : sql`group_id`;
+  const rows = await sql<{ count: number }[]>`
+    SELECT COUNT(*)::int AS count FROM guests WHERE ${col} = ${id}`;
+  return rows[0].count;
+}
+
+async function listWithUsed(table: Table) {
+  const rows = await list(table);
+  return Promise.all(
+    rows.map(async (r) => ({ ...r, used: await refCount(table, r.id) }))
+  );
 }
 
 export const parties = {
-  list: () => list("parties").map((p) => ({ ...p, used: refCount("parties", p.id) })),
+  list: () => listWithUsed("parties"),
   create: (name: string) => create("parties", name),
   rename: (id: string, name: string) => rename("parties", id, name),
   remove: (id: string) => remove("parties", id)
 };
 
 export const groups = {
-  list: () => list("groups").map((g) => ({ ...g, used: refCount("groups", g.id) })),
+  list: () => listWithUsed("groups"),
   create: (name: string) => create("groups", name),
   rename: (id: string, name: string) => rename("groups", id, name),
   remove: (id: string) => remove("groups", id)

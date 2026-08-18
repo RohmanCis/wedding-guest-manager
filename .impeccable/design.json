@@ -8,7 +8,7 @@
       "accent-rose": { "role": "secondary", "displayName": "Blush Rose", "canonical": "#c4717a", "tonalRamp": ["#3e2125", "#5c3137", "#7a414a", "#99525c", "#b7626b", "#c4717a", "#d08a92", "#dda0a7", "#ecc4c9"] },
       "accent-cream": { "role": "neutral", "displayName": "Warm Cream", "canonical": "#f0e6d3", "tonalRamp": ["#4a4234", "#6d6250", "#90826c", "#b3a28a", "#d0c2aa", "#e0d4bf", "#f0e6d3", "#f6efe2", "#fbf7ef"] },
       "surface-0": { "role": "neutral", "displayName": "Surface 0 (deepest)", "canonical": "#111113", "tonalRamp": ["#111113", "#1a1b1e", "#222327", "#2b2d31", "#313338", "#3e4045", "#565860", "#83858c"] },
-      "text-muted": { "role": "neutral", "displayName": "Muted Text", "canonical": "#6d6f78", "tonalRamp": ["#26272b", "#34353a", "#434448", "#52535a", "#60616a", "#6d6f78", "#8a8c94", "#b5b6bc"] },
+      "text-muted": { "role": "neutral", "displayName": "Muted Text", "canonical": "#949bae", "tonalRamp": ["#26272b", "#34353a", "#434448", "#52535a", "#60616a", "#787b86", "#949bae", "#b5b6bc"] },
       "chart-3": { "role": "tertiary", "displayName": "Identity Steel", "canonical": "#7a9cc4", "tonalRamp": ["#232f40", "#34455c", "#465c78", "#587395", "#6987ac", "#7a9cc4", "#96b1d3", "#a8c0dd", "#ccdaed"] },
       "chart-4": { "role": "tertiary", "displayName": "Identity Sage", "canonical": "#7ac49c", "tonalRamp": ["#234030", "#345c46", "#46785c", "#589572", "#69ac87", "#7ac49c", "#96d3b1", "#a5dcc0", "#ccedda"] },
       "chart-5": { "role": "tertiary", "displayName": "Identity Sand", "canonical": "#c49c7a", "tonalRamp": ["#402f23", "#5c4534", "#785c46", "#957358", "#ac8a69", "#c49c7a", "#d3b196", "#dec2a6", "#eddacc"] }
@@ -28,7 +28,7 @@
       { "name": "zoom-in", "value": "220ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Modal/popover entrance (fade + slight zoom)." },
       { "name": "shimmer", "value": "1.6s infinite", "purpose": "Skeleton loading sweep." },
       { "name": "row-hover", "value": "100ms", "purpose": "Table row background transition." },
-      { "name": "page-transition", "value": "0.22s easeOut, opacity 0→1 + y 16→0 (getVariants zeroes under reduced motion)", "purpose": "Per-page main content entrance via shared pageVariants." },
+      { "name": "page-transition", "value": "0.22s easeOut, opacity 0→1 + y 16→0 (getVariants zeroes under reduced motion)", "purpose": "Per-page main content updates via shared pageVariants; initial={false} — SSR first paint renders immediately with no entrance animation (LCP)." },
       { "name": "modal-pop", "value": "0.18s easeOut, opacity 0→1 + scale 0.96→1 (scale dropped under reduced motion)", "purpose": "Dialog entrance/exit via AnimatePresence." },
       { "name": "row-flash", "value": "1.5s, accent-gold-subtle → transparent", "purpose": "Newly saved guest row highlight (MotionTableRow)." },
       { "name": "press-scale", "value": "100–150ms, scale 0.95 (buttons) / 0.90 (nav items)", "purpose": "Tailwind-only press feedback on interactive elements." }

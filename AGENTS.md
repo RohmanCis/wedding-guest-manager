@@ -1,558 +1,85 @@
 # AGENTS.md
 
-## Project: Wedding Guest Manager
+Wedding Guest Manager — standalone, single-admin wedding guest-list app. One administrator manually enters guests collected from multiple parties.
 
-This document is the execution contract for coding agents and agent orchestrators working on this repository.
+**Status: MVP complete** (incl. approved `/analytics` exception below). 42/42 tests green; typecheck/build clean.
 
-The project is a **standalone wedding guest management application**.
+Source of truth:
+- `PRD-Wedding-Guest-Manager.md` — product spec. Read before non-trivial work. Do not invent product scope.
+- `DESIGN.md` (+ `.impeccable/design.json`) — design system. Read before UI work; keep in sync when the system changes.
+- `Task.md` — tracked task queue (cleanup, audits, refactors) with per-task scope, constraints, and status log. Read at session start; execute one task at a time; update its Status Log when done. Do not start a listed task without following its written scope.
 
-The primary operator is a **single administrator** who manually enters guest data collected from different parties.
-
-Agents must treat the PRD as the product source of truth and must not invent product scope.
-
----
-
-## 0. Current State & Agent Bootstrap
-
-**Status: MVP COMPLETE + review-fix pass (2026-08-18: TOCTOU duplicate→409, shared route guard, Button link variant, Group mode donut, single hex source `CHART_HEX`, dead-code purge) + dark UI overhaul + `/analytics` distribution page (see Section 2 exception) + responsive dual nav (bottom nav `<lg`) + framer-motion transitions + group color identity (`colorForGroup`) + required `ADMIN_SESSION_SECRET` (2026-08-19: missing value = boot failure — replaces the random per-process fallback that split the secret between middleware and API routes and broke login; vitest setup now loads it from `.env.local`). Design source of truth: `DESIGN.md` (+ `.impeccable/design.json`). 37/37 tests green. Typecheck/build clean.**
-
-### Stack
-
-Next.js 14.2 App Router · React 18 · TS 5.5 · Tailwind 3.4 · SQLite (`node:sqlite`, no ORM) · Vitest · Radix (dialog/select/dropdown/tooltip) · cva · lucide-react · framer-motion 13 (page transitions, modal pop, accordion) · bklit pie-chart components (`src/components/charts/`, vendored via shadcn registry — `@visx/*`, `d3-shape`, `motion`, `@number-flow/react`).
-
-### Auth
-
-Single admin. `src/lib/session.ts` (env `ADMIN_USERNAME`/`ADMIN_PASSWORD`, default `admin`/`admin`; **required** `ADMIN_SESSION_SECRET` — a missing value throws `ADMIN_SESSION_SECRET environment variable is required` at module load, i.e. boot failure, not silent cookie invalidation; the secret must be shared by middleware and API routes so they mint/accept the same cookie). Cookie session. `src/middleware.ts` guards all routes except `/login`, `/api/auth/login`, static assets, `icon.svg`.
-
-### File Map — read only what the task needs
-
-| Path | ~Loc | Role |
-|---|---|---|
-| `src/lib/guests.ts` | 204 | Guest CRUD, duplicate check (app pre-check + DB UNIQUE race → `DuplicateNameError`), CSV export — ALL guest business rules |
-| `src/lib/categories.ts` | 80 | Party/Group CRUD, rename, safe-delete guard |
-| `src/lib/normalize.ts` | 25 | `normalizeName` (BR-006), `DuplicateNameError(existingId)` |
-| `src/lib/db.ts` | 97 | SQLite schema + seed; `guests.name_norm` UNIQUE (DB-enforced dedup) |
-| `src/lib/client.ts` | 29 | `apiGet`/`apiSend` → throws `ApiError{existingId}` |
-| `src/app/page.tsx` | 609 | Guest dashboard (client): stats, responsive filter toolbar, table (MotionTableRow new-guest flash), modals, BR-007 "Lihat di daftar →", mobile sticky action bar |
-| `src/app/categories/page.tsx` | 313 | Category management (client) |
-| `src/app/analytics/page.tsx` | 288 | Analytics (client): filter panel (mobile accordion) + donut for both Party and Group modes; read-only, local filter state |
-| `src/app/login/page.tsx` | 89 | Login (client) |
-| `src/hooks/use-analytics-data.ts` | 81 | `useAnalyticsData({search,partyId,groupId})` → `{isLoading,error,totalGuests,byParty,byGroup}`; reuses `/api/guests` filter semantics; slice colors via `partyHex`/`colorForGroup` |
-| `src/hooks/use-is-mobile.ts` | 17 | `useIsMobile()` — <640px match, resize listener, SSR-guard false |
-| `src/hooks/use-reduced-motion.ts` | 4 | Re-export of framer-motion `useReducedMotion` (single import site) |
-| `src/lib/animation-variants.ts` | 42 | Shared `pageVariants` + `getVariants(reducedMotion)` zeroing + `getRowVariants` (table-row motion) |
-| `src/app/api/guests/route.ts` | 77 | GET list/csv · POST · PUT · DELETE (shared `guard()` from `lib/auth`) |
-| `src/app/api/categories/route.ts` | 59 | GET · POST · PUT · DELETE (shared `guard()` + `errorResponse`) |
-| `src/app/api/auth/login/route.ts` | 24 | POST login · DELETE logout |
-| `src/components/ui/` | — | 12 shared components: button input select modal card alert table stat-card empty-state loading dropdown-menu category-badge |
-| `src/components/charts/` | — | 14 vendored bklit chart files: PieChart/PieSlice/PieCenter + context/animation helpers; do not hand-edit |
-| `components.json` | — | shadcn registry config (aliases only; required for `shadcn add`) |
-| `DESIGN.md` | — | Design system source of truth (tokens, typography, elevation, components, rules) |
-| `.impeccable/design.json` | — | Machine-readable design sidecar (schemaVersion 2) |
-| `src/components/app-shell.tsx` | 150 | App shell: dual nav — 72px icon rail + tooltips + logout (lg+) · mobile bottom nav h-14 (<lg) · `TopBar`; `/login` renders without chrome |
-| `src/lib/party-colors.ts` | 175 | Single color source: Party identity (`colorFor(name)`), Group hex identity (`colorForGroup`), `CHART_HEX` + `partyHex` (SVG slice fills), deterministic hash fallbacks |
-| `src/lib/api-error.ts` | 22 | `ApiError` class — carries `existingId` for 409 duplicate responses (BR-007) |
-| `src/lib/auth.ts` | 27 | Login credential check (timing-safe compare) + shared API-route `guard()` |
-| `src/lib/utils.ts` | 6 | `cn()` class merge helper |
-| `src/types/node-sqlite.d.ts` | 23 | Ambient declaration for `node:sqlite` |
-| `src/app/layout.tsx` | 38 | Root layout — Fraunces/Figtree fonts, dark class, `AppShell` mount |
-| `src/app/globals.css` | 85 | Design tokens as CSS variables + base styles |
-| tests | — | `guests.test.ts` 14 · `categories.test.ts` 10 · `filter.test.ts` 8 · `auth.test.ts` 5 — colocated in `src/lib/` |
-
-### Key invariants — do not break
-
-- Duplicate identity = normalized name only; DB UNIQUE on `name_norm` + app check.
-- 409 duplicate response carries `existingId`; UI surfaces "View in list" (BR-007).
-- CSV export reuses `listGuests()` filter semantics — never duplicate filter logic.
-- Category delete blocked while `used > 0`.
-- UI: consume `src/components/ui/` — zero page-local button/input/modal styling.
-
-### Verify before done
+## Commands
 
 ```bash
-npm run typecheck; npm test; npm run build
+npm run typecheck   # tsc --noEmit
+npm test            # vitest run
+npm run build       # next build
 ```
 
-UI baseline: `DESIGN.md` (+ `.impeccable/design.json`).
-
----
-
-## 1. Source of Truth
-
-Primary product specification:
-
-- `PRD-Wedding-Guest-Manager.md`
-
-When requirements conflict, use this precedence:
-
-1. Explicit current user decision.
-2. PRD requirements.
-3. Existing implementation only when it does not conflict with 1 or 2.
-4. Agent assumptions are lowest priority and must not override product requirements.
-
-If implementation details are unspecified, choose the simplest maintainable solution that preserves the PRD behavior.
-
----
-
-## 2. Product Boundary
-
-### MUST IMPLEMENT
-
-- Single-admin authentication.
-- Guest CRUD.
-- Guest fields: Name, Address, Party, Group.
-- Exactly one Party per guest.
-- Exactly one Group per guest.
-- Party management from UI.
-- Group management from UI.
-- Name search.
-- Party filter.
-- Group filter.
-- Combined search/filter.
-- Duplicate prevention by normalized Name.
-- CSV export for all guests.
-- CSV export for filtered guests.
-- Validation and destructive-action confirmation.
-- Simple distribution analytics page (`/analytics`): guest counts by Party or Group as a donut chart, reusing the guest-list filters (search/party/group) and existing GET APIs. Added by explicit user decision (2026-08-18). This is the ONLY analytics exception — see "advanced analytics" below.
-
-### MUST NOT IMPLEMENT
-
-Unless an explicit product decision is added later, agents must not introduce:
-
-- multi-user contributor accounts;
-- guest invitation status;
-- RSVP;
-- attendance/check-in;
-- Pax tracking;
-- household management;
-- QR codes;
-- WhatsApp/email/SMS integrations;
-- CSV/Excel import;
-- guest relationship/free-text relation field;
-- public guest-facing portal;
-- advanced analytics (exception: the approved `/analytics` distribution view above — nothing beyond it: no trends, no pax/RSVP charts, no export of analytics);
-- notifications;
-- payment/budgeting;
-- wedding invitation website features.
-
-Do not sneak these into the codebase under another name.
-
----
-
-## 3. Core Domain Rules
-
-### Guest
-
-A Guest contains only:
-
-- `name`
-- `address`
-- `party_id`
-- `group_id`
-- system timestamps/identifier
-
-### Party
-
-Initial expected values:
-
-- Groom
-- Bride
-- Groom Family
-- Bride Family
-
-Party values are UI-manageable.
-
-### Group
-
-Initial suggested values:
-
-- Rekan Kerja
-- Sekolah
-- Kuliah
-- Tetangga
-- Saudara
-- Teman
-- Komunitas
-- Lainnya
-
-Group values are UI-manageable.
-
-### Ownership
-
-A Guest belongs to exactly one Party.
-
-Do not model many-to-many ownership for MVP.
-
-### Grouping
-
-A Guest belongs to exactly one Group.
-
-Do not model many-to-many grouping for MVP.
-
----
-
-## 4. Duplicate Rule: CRITICAL
-
-Duplicate identity is based **only on guest Name**.
-
-Address must NOT be part of the identity key.
-
-Party must NOT be part of the identity key.
-
-Group must NOT be part of the identity key.
-
-Example that MUST be blocked:
-
-```text
-Existing:
-Budi Santoso / Jl. Mawar / Groom / Rekan Kerja
-
-New:
-Budi Santoso / Jl. Melati / Bride / Tetangga
-```
-
-The second record is a duplicate and must be rejected.
-
-### Name normalization
-
-Before comparison:
-
-1. trim leading/trailing whitespace;
-2. collapse repeated internal whitespace;
-3. compare case-insensitively.
-
-Minimum normalization examples:
-
-```text
-" Budi Santoso " == "budi santoso"
-"Budi  Santoso" == "BUDI SANTOSO"
-```
-
-Do not implement fuzzy matching, typo matching, phonetic matching, or similarity scoring unless explicitly requested later.
-
-### Enforcement
-
-Duplicate protection MUST exist at the server/business-logic level and must be backed by database integrity where technically possible.
-
-Client-side validation alone is insufficient.
-
----
-
-## 5. CRUD Rules
-
-### Create
-
-Required:
-
-- Name
-- Address
-- Party
-- Group
-
-Reject blank values after trimming.
-
-Run duplicate validation before persistence.
-
-### Read
-
-Guest list must support:
-
-- Name search;
-- Party filter;
-- Group filter;
-- combined search/filter;
-- reset filters.
-
-### Update
-
-All guest fields are editable.
-
-Changing Name triggers duplicate validation.
-
-A guest may keep its own current normalized Name.
-
-### Delete
-
-Guest deletion requires explicit confirmation.
-
-Do not silently cascade delete Party or Group records.
-
----
-
-## 6. Party and Group Management
-
-Party and Group are simple managed reference data.
-
-Agents should favor a minimal CRUD UI.
-
-Allowed:
-
-- create;
-- rename/edit;
-- delete when safe.
-
-Deletion must not orphan guest records.
-
-Acceptable strategies include:
-
-- block deletion while referenced;
-- require reassignment before deletion.
-
-Do not silently reassign guests.
-
-Do not build nested categories, drag/drop taxonomy builders, versioning, bulk category workflows, or permission systems.
-
----
-
-## 7. CSV Export Contract
-
-Two export modes are required:
-
-### Export All
-
-Returns every guest in the system.
-
-### Export Filtered
-
-Returns only the result set represented by the currently active:
-
-- search query;
-- Party filter;
-- Group filter.
-
-The filtered export must use the same canonical query semantics as the guest list.
-
-CSV columns, in order:
-
-```text
-Name,Address,Party,Group
-```
-
-Use UTF-8.
-
-Suggested filenames:
-
-```text
-wedding-guests-all-YYYY-MM-DD.csv
-wedding-guests-filtered-YYYY-MM-DD.csv
-```
-
-Do not create a separate export implementation with subtly different filtering rules.
-
----
-
-## 8. UI/UX Rules
-
-Optimize for manual data entry.
-
-The administrator is expected to enter many guests one by one.
-
-Prioritize:
-
-- visible Add Guest action;
-- compact form;
-- keyboard-friendly interaction;
-- clear validation;
-- persistent filters;
-- easy reset;
-- fast return to guest list after save.
-
-Preferred guest toolbar structure:
-
-```text
-[ Search name... ] [ Party ] [ Group ] [ Reset ] [ Export CSV ] [ Add Guest ]
-```
-
-Do not create multi-step guest forms.
-
-Do not add unnecessary guest fields.
-
-Do not optimize for public consumer-facing presentation.
-
----
-
-## 9. Architecture Guidance
-
-The exact stack may be chosen by the repository/project configuration, but agents must follow these principles:
-
-- Keep domain rules server-authoritative.
-- Keep guest uniqueness deterministic.
-- Keep filtering/export semantics shared rather than duplicated.
-- Keep Party and Group reference data simple.
-- Avoid premature abstraction.
-- Avoid speculative feature modules.
-- Prefer boring, maintainable code over framework tricks.
-
-A feature should not create a new abstraction unless the existing structure cannot reasonably support it.
-
----
-
-## 10. Data Integrity
-
-The implementation must guarantee:
-
-- guest name is non-empty;
-- address is non-empty;
-- Party reference is valid;
-- Group reference is valid;
-- duplicate normalized names cannot coexist;
-- guest update cannot accidentally create a duplicate;
-- category deletion cannot invalidate guests;
-- create/update operations are atomic.
-
-If the database supports functional indexes, generated columns, collations, or equivalent mechanisms suitable for normalized uniqueness, prefer a database-backed constraint consistent with the normalization rule.
-
-Do not rely on application checks alone when the database can enforce the invariant.
-
----
-
-## 11. Testing Requirements
-
-Every implementation of a business rule must include appropriate automated tests.
-
-### Minimum guest tests
-
-- create valid guest;
-- reject blank Name;
-- reject blank Address;
-- reject missing Party;
-- reject missing Group;
-- reject duplicate Name with exact same casing;
-- reject duplicate Name with different casing;
-- reject duplicate Name with leading/trailing whitespace differences;
-- reject duplicate Name with repeated internal whitespace differences;
-- allow same address for different names;
-- reject changing a guest to another existing normalized name;
-- allow guest to retain its own name;
-- delete guest only with explicit application action.
-
-### Filtering tests
-
-- search by Name;
-- Party filter;
-- Group filter;
-- combined search + Party;
-- combined search + Group;
-- search + Party + Group;
-- reset filters.
-
-### Export tests
-
-- export all includes every guest;
-- filtered export includes only filtered records;
-- CSV columns are correct and ordered;
-- CSV values are escaped correctly;
-- empty filtered result exports a valid CSV header rather than corrupt output.
-
-### Category tests
-
-- create Party;
-- rename Party;
-- create Group;
-- rename Group;
-- prevent unsafe deletion of referenced categories.
-
----
-
-## 12. Implementation Workflow
-
-Agents should work in this order unless the repository already imposes a stronger structure:
-
-1. Inspect repository structure and existing conventions.
-2. Read the PRD fully before changing code.
-3. Identify existing auth, database, UI, and test infrastructure.
-4. Implement the smallest coherent domain model.
-5. Implement database constraints/integrity.
-6. Implement server-side CRUD and duplicate rules.
-7. Implement guest list/search/filter.
-8. Implement Party/Group management.
-9. Implement CSV export using canonical query logic.
-10. Add and run automated tests.
-11. Validate against the acceptance criteria in the PRD.
-12. Remove unnecessary code or abstractions introduced during implementation.
-
-Do not begin by building a dashboard or visual polish before the core guest data model and integrity rules are correct.
-
----
-
-## 13. Change Control
-
-When a user request conflicts with this document, do not silently reinterpret the requirement.
-
-If the requested change affects one of these foundations, stop and surface the product decision clearly:
-
-- Guest identity;
-- Party cardinality;
-- Group cardinality;
-- required Guest fields;
-- duplicate definition;
-- authentication model;
-- import/export scope;
-- multi-user scope;
-- attendance/invitation scope.
-
-A new feature that expands scope must be treated as an explicit product change, not an implementation detail.
-
----
-
-## 14. Anti-Overengineering Rules
-
-Do not introduce:
-
-- event sourcing;
-- CQRS solely for this app;
-- microservices;
-- workflow engines;
-- complex permission matrices;
-- generic dynamic field builders;
-- generic taxonomy engines;
-- fuzzy-search infrastructure;
-- analytics warehouses;
-- message queues;
-- feature flags for trivial MVP behavior.
-
-Use simple CRUD and clear invariants.
-
-The scale target is a wedding guest list, not a multinational ERP. Build accordingly.
-
----
-
-## 15. Definition of Done
-
-A guest-management change is not done until:
-
-- PRD behavior is satisfied;
-- business rules are enforced server-side;
-- relevant database integrity exists;
-- automated tests cover the changed behavior;
-- UI validation/error states are usable;
-- filtering and export remain consistent;
-- no out-of-scope feature was introduced;
-- code follows repository conventions;
-- dead or duplicate implementation is removed.
-
----
-
-## UI Design Inventory
-
-`DESIGN.md` is the design source of truth (tokens, typography, elevation, components, rules); `.impeccable/design.json` is its machine-readable sidecar.
-
-When modifying UI:
-- read `DESIGN.md`;
-- preserve verified business behavior;
-- treat DESIGN.md as the baseline for visual changes and keep it in sync when the system changes;
-- do not expand UI scope without explicit product direction.
-
----
-
-## 16. Final Agent Principle
-
-The application should remain a **simple, reliable source of truth for wedding guests**.
-
-When faced with two implementation choices, prefer the one that:
-
-1. preserves the explicit product rules;
-2. minimizes moving parts;
-3. is easy for another engineer to understand;
-4. is easy to test;
-5. does not create future scope accidentally.
+All three must pass before a task is done.
+
+## Precedence
+
+1. Explicit current user decision
+2. PRD requirements
+3. Existing implementation (only if it doesn't conflict with 1–2)
+4. Agent assumptions (never override 1–3)
+
+## Product boundary
+
+Implemented and complete: single-admin auth · guest CRUD (`name`/`address`/`party_id`/`group_id`/`pax`, exactly one party + one group per guest) · name search · party/group/combined filters + reset · duplicate prevention by normalized name · party & group management · CSV export all/filtered (columns `Name,Address,Party,Group,Pax`) · `pax` field: integer 1–4 people per entry, default 1 (explicit user decision 2026-08-19; not household tracking — one number per guest entry, no member names) · `/analytics` read-only distribution donut (explicit user decision 2026-08-18 — the ONLY analytics allowed; counts entries, NOT pax-weighted).
+
+Never add, even under another name, unless the user makes an explicit product decision first: multi-user accounts · invitation status · RSVP · attendance/check-in · household member tracking (names within one entry) · QR codes · WhatsApp/email/SMS integrations · CSV/Excel import · relationship/free-text relation fields · public guest-facing portal · analytics beyond `/analytics` (no trends, no pax/RSVP charts, no analytics export) · notifications · payments/budgeting · invitation-website features.
+
+A request that changes guest identity, party/group cardinality, required guest fields, duplicate definition, auth model, or import/export scope is a product change — surface it, don't implement silently.
+
+## Invariants — do not break
+
+- Duplicate identity = normalized name ONLY (trim → collapse internal whitespace → case-insensitive; `normalizeName`, BR-006). Address/party/group never affect it. No fuzzy/phonetic matching.
+- Enforcement is server-side AND database-backed: app pre-check + `guests.name_norm` UNIQUE (TOCTOU race → `DuplicateNameError`). Duplicate 409 response carries `existingId`; UI surfaces "Lihat di daftar →" (BR-007). Guest may keep its own name on edit (BR-008).
+- All guest business rules live in `src/lib/guests.ts`, server-authoritative. CSV export reuses `listGuests()` filter semantics — never duplicate filter logic. Columns `Name,Address,Party,Group,Pax`, UTF-8, filenames `wedding-guests-{all|filtered}-YYYY-MM-DD.csv`.
+- Category delete blocked while `used > 0`; never silently reassign or cascade-delete guests. Guest delete requires explicit confirmation. Create/update atomic.
+- Auth: cookie session via `src/lib/session.ts`. `ADMIN_SESSION_SECRET` is REQUIRED — missing value throws at module load (boot failure; secret must be shared by middleware and API routes). `src/middleware.ts` guards everything except `/login`, `/api/auth/login`, static assets, `icon.svg`.
+- SSR pages (`/`, `/categories`, `/analytics`) read `lib/` directly and pass `initial*` props to `*-view.tsx` client components, which skip the initial fetch. `listGuests()` must spread rows to plain objects — node:sqlite null-prototype rows are not RSC-serializable.
+- UI: consume `src/components/ui/` primitives only — zero page-local button/input/modal styling. Party colors resolve through `colorFor(name)`, group colors through `colorForGroup(name)`; category icons through `iconFor(name)`/`iconForGroup(name)` rendered via `CategoryIcon` (single source: `src/lib/party-colors.ts`); never inline category hexes or icon maps. Icons sit beside the color dot (dot = identity); never in guest table badges. Dropdown/modal popovers keep viewport-edge inset (`collisionPadding`, `max-w` calc). Dark theme only — no light mode, no toggle. Fraunces = brand mark/login title only. One gold primary action per view; solid Danger red only in confirm dialogs.
+- Every business-rule change ships with tests (colocated `src/lib/*.test.ts`) covering at minimum the PRD §12 acceptance criteria for the changed behavior.
+
+## File map — read only what the task needs
+
+| Path | Role |
+|---|---|
+| `src/lib/guests.ts` | ALL guest business rules: CRUD, duplicate check, filter semantics, CSV export |
+| `src/lib/normalize.ts` | `normalizeName` (BR-006), `DuplicateNameError(existingId)` |
+| `src/lib/categories.ts` | Party/Group CRUD, rename, safe-delete guard |
+| `src/lib/db.ts` | SQLite schema + seed; `name_norm` UNIQUE. `GUEST_DB_PATH` env override |
+| `src/lib/session.ts` | Cookie session; required `ADMIN_SESSION_SECRET` |
+| `src/lib/auth.ts` | Credential check (timing-safe) + shared API `guard()` |
+| `src/lib/client.ts` / `api-error.ts` | Client fetch helpers; `ApiError` carries `existingId` |
+| `src/lib/party-colors.ts` | Single category identity source: `colorFor`/`colorForGroup`, `iconFor`/`iconForGroup` (named maps + deterministic hash fallback), `CHART_HEX`, `partyHex` |
+| `src/lib/animation-variants.ts` | Shared motion variants + reduced-motion zeroing |
+| `src/middleware.ts` | Route guard |
+| `src/app/page.tsx` → `guests-view.tsx` | Guest dashboard: stats, filter toolbar (search debounced 300ms), table with 10-row pagination + "Tampilkan Semua" toggle, modals, BR-007 jump, mobile sticky action bar |
+| `src/app/categories/*` | Category management (server page → client view) |
+| `src/app/analytics/*` | Analytics donut, Party/Group modes (server page → client view, read-only) |
+| `src/app/login/page.tsx` | Login |
+| `src/app/api/guests/route.ts` | GET list/csv · POST · PUT · DELETE |
+| `src/app/api/categories/route.ts` | GET · POST · PUT · DELETE |
+| `src/app/api/auth/login/route.ts` | POST login · DELETE logout |
+| `src/components/ui/` | 13 shared primitives (incl. pagination) — consume, never restyle locally |
+| `src/components/charts/` | 14 vendored bklit chart files — do not hand-edit |
+| `src/components/app-shell.tsx` | Dual nav: 72px desktop icon rail + mobile bottom nav (<lg), TopBar; `/login` renders without chrome |
+| `src/hooks/` | `use-analytics-data`, `use-is-mobile`, `use-pagination`, `use-reduced-motion` |
+| `src/lib/*.test.ts` | 42 tests: guests 19 · categories 10 · filter 8 · auth 5 |
+| `vitest.setup.ts` | Per-worker `GUEST_DB_PATH`; loads `ADMIN_SESSION_SECRET` from `.env.local` (fixed fallback) |
+| `DEPLOYMENT.md` | Deployment + env vars (incl. required `ADMIN_SESSION_SECRET`) |
+
+Stack notes: `motion` 13 — package name `motion`, imported as `motion/react` (NOT framer-motion). Radix dialog/select/dropdown/tooltip + cva + lucide-react. bklit charts pull `@visx/*`, `d3-shape`, `@number-flow/react`.
+
+## Working rules
+
+- Simplest maintainable solution that preserves PRD behavior. Prefer boring code, deletion over addition, fewest files. No premature abstraction, no speculative modules, no unrequested "for later" scaffolding.
+- Wedding-list scale, not ERP: no event sourcing, CQRS, microservices, workflow engines, permission matrices, dynamic field builders, taxonomy engines, fuzzy-search infra, message queues, feature flags.
+- Server pages are `force-dynamic`; first paint carries no entrance animation (LCP); motion only after first paint, zeroed for reduced motion.
+- Validation: reject blank values after trim; errors clear and local to the field; never expose raw DB errors. Destructive actions need confirmation.
+- Unknowns → ask; don't guess product scope.

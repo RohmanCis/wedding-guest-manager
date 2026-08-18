@@ -6,7 +6,7 @@ export function StatCard({
   accent,
   className
 }: {
-  label: string;
+  label: React.ReactNode;
   value: number | string;
   /** 3px left accent bar: bg class, e.g. colorFor().dot */
   accent?: string;

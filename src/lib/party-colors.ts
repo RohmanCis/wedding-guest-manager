@@ -1,5 +1,29 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  Crown,
+  Gem,
+  Users,
+  UsersRound,
+  Briefcase,
+  School,
+  GraduationCap,
+  Home,
+  HeartHandshake,
+  Smile,
+  Network,
+  Tag,
+  Star,
+  Sparkles,
+  Gift,
+  Music,
+  Camera,
+  Flower2,
+  Leaf,
+  Heart
+} from "lucide-react";
+
 /**
- * Color identity for Party/Group categories.
+ * Color + icon identity for Party/Group categories.
  * Named entries use the brand chart palette; user-created categories
  * fall back to a deterministic hash pick so colors stay stable.
  *
@@ -172,4 +196,49 @@ export function colorForGroup(name: string): GroupColor {
   const hex =
     groupColorHex[name] ?? GROUP_FALLBACK[hashName(name) % GROUP_FALLBACK.length];
   return { dot: hex, bg: `${hex}26`, text: lighten(hex) };
+}
+
+/* === Icon identity ===
+ * Mirrors the color rule: named categories get a fixed icon, user-created
+ * names fall back through the same deterministic hashName into a neutral set.
+ * Icons are decorative (aria-hidden) — color remains the primary identity.
+ */
+
+const PARTY_ICONS: Record<string, LucideIcon> = {
+  Groom: Crown,
+  Bride: Gem,
+  "Groom Family": Users,
+  "Bride Family": UsersRound
+};
+
+const GROUP_ICONS: Record<string, LucideIcon> = {
+  "Rekan Kerja": Briefcase,
+  Sekolah: School,
+  Kuliah: GraduationCap,
+  Tetangga: Home,
+  Saudara: HeartHandshake,
+  Teman: Smile,
+  Komunitas: Network,
+  Lainnya: Tag
+};
+
+const ICON_FALLBACK: LucideIcon[] = [
+  Star,
+  Sparkles,
+  Gift,
+  Music,
+  Camera,
+  Flower2,
+  Leaf,
+  Heart
+];
+
+/** Party icon identity. */
+export function iconFor(name: string): LucideIcon {
+  return PARTY_ICONS[name] ?? ICON_FALLBACK[hashName(name) % ICON_FALLBACK.length];
+}
+
+/** Group icon identity. */
+export function iconForGroup(name: string): LucideIcon {
+  return GROUP_ICONS[name] ?? ICON_FALLBACK[hashName(name) % ICON_FALLBACK.length];
 }

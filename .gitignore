@@ -1,5 +1,11 @@
 node_modules/
 .next/
 .data/
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.example
+.playwright-mcp/
 *.tsbuildinfo
-.env.local

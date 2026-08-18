@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { colorFor, colorForGroup } from "@/lib/party-colors";
+import { colorFor, colorForGroup, iconFor, iconForGroup } from "@/lib/party-colors";
 
 type Kind = "party" | "group";
 
@@ -26,6 +26,22 @@ export function CategoryDot({
       aria-hidden="true"
         className={cn("size-2 shrink-0 rounded-full", colorFor(name).dot, className)}
     />
+  );
+}
+
+/** Decorative category icon (currentColor). Renders beside CategoryDot/name. */
+export function CategoryIcon({
+  kind,
+  name,
+  className
+}: {
+  kind: Kind;
+  name: string;
+  className?: string;
+}) {
+  const Icon = kind === "group" ? iconForGroup(name) : iconFor(name);
+  return (
+    <Icon aria-hidden="true" className={cn("size-3 shrink-0", className)} />
   );
 }
 

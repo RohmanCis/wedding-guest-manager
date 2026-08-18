@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,11 +15,10 @@ import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/loading";
 import { TopBar } from "@/components/app-shell";
-import { PieChart } from "@/components/charts/pie-chart";
-import { PieSlice } from "@/components/charts/pie-slice";
-import { PieCenter } from "@/components/charts/pie-center";
+import { AnalyticsBarChart } from "@/components/analytics-bar-chart";
 import { motion, AnimatePresence } from "motion/react";
 import { useAnalyticsData } from "@/hooks/use-analytics-data";
+import type { AnalyticsGuest } from "@/hooks/use-analytics-data";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { getVariants } from "@/lib/animation-variants";
@@ -33,27 +31,21 @@ interface Ref {
 
 const ALL = "__all__";
 
-export default function AnalyticsPage() {
+export default function AnalyticsView({
+  initialParties,
+  initialGroups,
+  initialGuests
+}: {
+  initialParties: Ref[];
+  initialGroups: Ref[];
+  initialGuests: AnalyticsGuest[];
+}) {
   const [search, setSearch] = useState("");
   const [partyId, setPartyId] = useState("");
   const [groupId, setGroupId] = useState("");
   const [mode, setMode] = useState<"party" | "group">("party");
-  const [parties, setParties] = useState<Ref[]>([]);
-  const [groups, setGroups] = useState<Ref[]>([]);
-  const [refsError, setRefsError] = useState("");
-
-  useEffect(() => {
-    apiGet<{ parties: Ref[]; groups: Ref[] }>("/api/categories")
-      .then((d) => {
-        setParties(d.parties);
-        setGroups(d.groups);
-      })
-      .catch((e: unknown) =>
-        setRefsError(
-          e instanceof Error ? e.message : "Failed to load categories."
-        )
-      );
-  }, []);
+  const [parties, setParties] = useState<Ref[]>(initialParties);
+  const [groups, setGroups] = useState<Ref[]>(initialGroups);
 
   // Debounce the query fed to the hook; input value stays immediate.
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -63,7 +55,12 @@ export default function AnalyticsPage() {
   }, [search]);
 
   const { isLoading, error, totalGuests, byParty, byGroup } =
-    useAnalyticsData({ search: debouncedSearch, partyId, groupId });
+    useAnalyticsData({
+      search: debouncedSearch,
+      partyId,
+      groupId,
+      initialGuests
+    });
 
   const isMobile = useIsMobile();
   const reducedMotion = useReducedMotion();
@@ -142,7 +139,7 @@ export default function AnalyticsPage() {
       </TopBar>
       <motion.main
         variants={getVariants(!!reducedMotion)}
-        initial="initial"
+        initial={false}
         animate="animate"
         className="p-6"
       >
@@ -211,9 +208,9 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {error || refsError ? (
+            {error ? (
               <div className="mt-4">
-                <Alert variant="error">{error || refsError}</Alert>
+                <Alert variant="error">{error}</Alert>
               </div>
             ) : isLoading ? (
               <div
@@ -231,53 +228,8 @@ export default function AnalyticsPage() {
                 />
               </div>
             ) : (
-              <div className="mt-4 flex justify-center">
-                <div className="w-full max-w-[280px]">
-                  <PieChart
-                    data={data}
-                    size={isMobile ? undefined : 280}
-                    innerRadius={80}
-                    padAngle={0.02}
-                    cornerRadius={4}
-                  >
-                  {data.map((d, i) => (
-                    <PieSlice
-                      key={d.label}
-                      index={i}
-                      hoverEffect="translate"
-                      showGlow={true}
-                    />
-                  ))}
-                  <PieCenter defaultLabel="Total Tamu">
-                    {({ value, label }) => (
-                      <div className="flex min-w-0 flex-col items-center text-center">
-                        <span className="text-2xl font-semibold tabular-nums text-accent-cream">
-                          {value}
-                        </span>
-                        <span className="max-w-full truncate text-xs font-medium text-secondary">
-                          {label}
-                        </span>
-                      </div>
-                    )}
-                  </PieCenter>
-                  </PieChart>
-                </div>
-                <table className="sr-only" aria-label="Guest distribution data">
-                  <thead>
-                    <tr>
-                      <th scope="col">Nama</th>
-                      <th scope="col">Jumlah</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.map((d) => (
-                      <tr key={d.label}>
-                        <td>{d.label}</td>
-                        <td>{d.value}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-4">
+                <AnalyticsBarChart data={data} mode={mode} />
               </div>
             )}
           </Card>

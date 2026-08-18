@@ -20,7 +20,7 @@ colors:
   border-strong: "rgba(255, 255, 255, 0.18)"
   text-primary: "#f2f3f5"
   text-secondary: "#b5bac1"
-  text-muted: "#6d6f78"
+  text-muted: "#949bae"
   text-inverse: "#111113"
   danger: "#f04747"
   danger-subtle: "rgba(240, 71, 71, 0.12)"
@@ -153,7 +153,7 @@ The palette is a cool dark neutral ladder warmed by a single gold voice, with ro
 - **Surface Overlay** (#0d0d0f): modal backdrop at 80% opacity with backdrop blur.
 - **Primary Text** (#f2f3f5): body and table text on all surfaces.
 - **Secondary Text** (#b5bac1): labels, descriptions, ghost buttons.
-- **Muted Text** (#6d6f78): placeholders, table header labels, disabled hints. Borderline contrast — never use it for data-bearing text.
+- **Muted Text** (#949bae): placeholders, table header labels, disabled hints. Meets WCAG AA (≥4.97:1 on all surfaces).
 - **Inverse Text** (#111113): text sitting directly on Wedding Gold.
 - **Subtle Border** (rgba(255,255,255,0.06)): surface dividers, table row separators.
 - **Default Border** (rgba(255,255,255,0.10)): input, card, and menu outlines.
@@ -173,8 +173,8 @@ The palette is a cool dark neutral ladder warmed by a single gold voice, with ro
 
 ## Typography
 
-**Display Font:** Fraunces (via `next/font`, `--font-display`, Georgia fallback)
-**Body Font:** Figtree (via `next/font`, `--font-body`, system sans fallback)
+**Display Font:** Fraunces (self-hosted via `@fontsource-variable/fraunces`, `--font-display`, Georgia fallback)
+**Body Font:** Figtree (self-hosted via `@fontsource-variable/figtree`, `--font-body`, system sans fallback)
 
 **Character:** Fraunces brings the wedding warmth in exactly one place; Figtree carries the entire operational interface with quiet, legible neutrality.
 
@@ -203,7 +203,7 @@ Depth comes from the five-step surface ladder first; shadows are a secondary, st
 
 ## Components
 
-Motion conventions: page transitions are framer-motion fade-and-rise (16px to 0, 0.22s easeOut) on every page's main content via shared `pageVariants`; modals scale 0.96 → 1 over 0.18s; micro-interactions stay Tailwind-only — buttons press to 95% scale, badges transition colors over 200ms, stat cards lift a shadow level on hover, nav items press to 90%. `getVariants(reducedMotion)` zeroes durations and travel when the user prefers reduced motion; the modal drops its scale but keeps the fade.
+Motion conventions: page content is server-rendered and paints immediately — first paint carries no entrance animation (LCP requirement); subsequent updates animate through the shared `pageVariants` (fade-and-rise 16px to 0, 0.22s easeOut, `initial={false}` on mount). Modals scale 0.96 → 1 over 0.18s; micro-interactions stay Tailwind-only — buttons press to 95% scale, badges transition colors over 200ms, stat cards lift a shadow level on hover, nav items press to 90%. `getVariants(reducedMotion)` zeroes durations and travel when the user prefers reduced motion; the modal drops its scale but keeps the fade. Table rows skip their enter animation on the first client render (SSR rows paint statically); filter/page changes animate rows in and out (y 8→0, 200ms; out y −8, 150ms) as before.
 
 ### Button
 Five variants, four sizes, one loading pattern. **Primary** is Wedding Gold with Inverse Text, semibold, shadow-1 lifting to shadow-2 on hover. **Secondary** is Surface 3 with a default border, stepping to Surface 4 on hover. **Ghost** is transparent Secondary Text, gaining a Surface 3 wash on hover — the toolbar and icon-action workhorse. **Danger** is solid red reserved for confirm-delete dialogs only, never a row-level trigger. **Link** is a gold underlined text button (auto-height, no padding, keeps the focus ring) for inline text actions like the BR-007 "Lihat di daftar →" jump inside alerts. Sizes: `sm` (28px), `md` (36px, default), `lg` (40px), `icon` (32px square). Loading swaps in a Spinner matching the button's text color, disables the button, sets `aria-busy`. Every button carries the gold focus ring offset against its parent surface.

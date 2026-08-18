@@ -5,9 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
-import { motion } from "motion/react";
-import { getVariants } from "@/lib/animation-variants";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 function LoginForm() {
   const router = useRouter();
@@ -16,7 +13,6 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const reducedMotion = useReducedMotion();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,12 +33,7 @@ function LoginForm() {
   }
 
   return (
-    <motion.main
-      variants={getVariants(!!reducedMotion)}
-      initial="initial"
-      animate="animate"
-      className="flex min-h-screen items-center justify-center bg-surface-0 p-4"
-    >
+    <main className="animate-page-in flex min-h-screen items-center justify-center bg-surface-0 p-4">
       <div className="w-full max-w-sm rounded-2xl bg-surface-4 p-8 shadow-modal">
         <div className="mb-6 space-y-2 text-center">
           <span
@@ -81,7 +72,7 @@ function LoginForm() {
           {error && <Alert variant="error">{error}</Alert>}
         </form>
       </div>
-    </motion.main>
+    </main>
   );
 }
 

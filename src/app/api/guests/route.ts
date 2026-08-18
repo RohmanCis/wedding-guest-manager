@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const filter = toFilter(req);
   if (sp.get("csv") === "1") {
-    const csv = exportGuestsCsv(filter);
+    const csv = await exportGuestsCsv(filter);
     const scope = sp.get("scope") === "all" ? "all" : "filtered";
     return new NextResponse(csv, {
       status: 200,
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       }
     });
   }
-  return NextResponse.json({ guests: listGuests(filter) });
+  return NextResponse.json({ guests: await listGuests(filter) });
 }
 
 export async function POST(req: NextRequest) {
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   if (g) return g;
   const body = (await req.json().catch(() => ({}))) as GuestInput;
   try {
-    const guest = createGuest(body);
+    const guest = await createGuest(body);
     return NextResponse.json({ guest }, { status: 201 });
   } catch (e) {
     return errorResponse(e);
@@ -56,7 +56,7 @@ export async function PUT(req: NextRequest) {
   if (g) return g;
   const body = (await req.json().catch(() => ({}))) as GuestInput & { id: string };
   try {
-    const guest = updateGuest(body.id, body);
+    const guest = await updateGuest(body.id, body);
     return NextResponse.json({ guest });
   } catch (e) {
     return errorResponse(e);
@@ -69,7 +69,7 @@ export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
   try {
-    deleteGuest(id);
+    await deleteGuest(id);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return errorResponse(e);

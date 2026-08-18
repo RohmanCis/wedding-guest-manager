@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 /** Table wrapper: rounded-xl border border-subtle overflow-hidden. */
@@ -66,9 +65,6 @@ export const TableRow = React.forwardRef<
     />
   );
 });
-
-/** Motion-enabled row for enter/highlight animations (e.g. new-guest flash). */
-export const MotionTableRow = motion(TableRow);
 
 export function TableHead({
   className,

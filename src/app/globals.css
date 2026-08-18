@@ -1,9 +1,79 @@
-@import "@fontsource-variable/fraunces";
-@import "@fontsource-variable/figtree";
+@font-face {
+  font-family: "Figtree Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 900;
+  src: url("/fonts/figtree-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Fraunces Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 900;
+  src: url("/fonts/fraunces-latin-wght-normal.woff2") format("woff2-variations");
+}
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Login entrance — CSS twin of pageVariants (motion/react dropped from /login bundle) */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-page-in {
+  animation: page-in 0.22s ease-out both;
+}
+/* Guest table row enter + new-guest flash — CSS twin of getRowVariants (motion dropped from initial bundle) */
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-row-in {
+  animation: row-in 0.2s ease-out both;
+}
+/* Analytics bar grow-in — width animates 0 → inline target, staggered via inline delay */
+@keyframes bar-in {
+  from {
+    width: 0;
+  }
+}
+.analytics-bar-in {
+  animation: bar-in 0.4s ease-out both;
+}
+@keyframes row-flash {
+  from {
+    background-color: rgba(201, 168, 76, 0.12);
+  }
+  to {
+    background-color: rgba(201, 168, 76, 0);
+  }
+}
+.animate-row-flash {
+  animation: row-flash 1.5s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-in,
+  .animate-row-in,
+  .animate-row-flash,
+  .analytics-bar-in {
+    animation: none;
+  }
+}
 
 /* === DARK (default, only theme) === */
 :root {
@@ -34,7 +104,7 @@
   /* Text */
   --text-primary: #f2f3f5;
   --text-secondary: #b5bac1;
-  --text-muted: #6d6f78;
+  --text-muted: #949bae;
   --text-inverse: #111113;
 
   /* Borders */

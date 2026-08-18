@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { apiGet, apiSend } from "@/lib/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/loading";
-import { CategoryDot } from "@/components/ui/category-badge";
+import { CategoryDot, CategoryIcon } from "@/components/ui/category-badge";
 import { TopBar } from "@/components/app-shell";
 import { motion } from "motion/react";
 import { getVariants } from "@/lib/animation-variants";
@@ -26,13 +26,19 @@ interface Ref {
 
 type Kind = "party" | "group";
 
-export default function CategoriesPage() {
-  const [parties, setParties] = useState<Cat[]>([]);
-  const [groups, setGroups] = useState<Cat[]>([]);
+export default function CategoriesView({
+  initialParties,
+  initialGroups
+}: {
+  initialParties: Cat[];
+  initialGroups: Cat[];
+}) {
+  const [parties, setParties] = useState<Cat[]>(initialParties);
+  const [groups, setGroups] = useState<Cat[]>(initialGroups);
   const [newParty, setNewParty] = useState("");
   const [newGroup, setNewGroup] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const reducedMotion = useReducedMotion();
 
@@ -51,9 +57,6 @@ export default function CategoriesPage() {
       setLoading(false);
     }
   }
-  useEffect(() => {
-    load();
-  }, []);
 
   async function add(kind: Kind, name: string) {
     setError("");
@@ -103,7 +106,7 @@ export default function CategoriesPage() {
       </TopBar>
       <motion.main
         variants={getVariants(!!reducedMotion)}
-        initial="initial"
+        initial={false}
         animate="animate"
         className="space-y-5 p-6"
       >
@@ -280,6 +283,7 @@ function CategorySection({
                     <>
                       <span className="flex flex-1 items-center gap-2 truncate text-sm font-medium text-primary">
                         <CategoryDot kind={kind} name={item.name} />
+                        <CategoryIcon kind={kind} name={item.name} />
                         {item.name}
                       </span>
                       <span className="rounded-full border border-subtle bg-surface-4 px-2 py-0.5 text-xs text-secondary tabular-nums">
