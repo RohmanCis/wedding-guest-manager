@@ -2,7 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    optimizePackageImports: ["lucide-react"]
+    optimizePackageImports: ["lucide-react"],
+    // postgres.js resolves dynamically at require-time; bundling it breaks
+    // module evaluation in RSC chunks (page render hangs before executing).
+    serverComponentsExternalPackages: ["postgres"]
   }
 };
 
