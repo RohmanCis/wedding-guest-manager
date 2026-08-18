@@ -1,9 +1,16 @@
+@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/figtree";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* === DARK (default, only theme) === */
 :root {
+  /* Fonts — self-hosted via fontsource (node_modules, no network) */
+  --font-display: "Fraunces Variable", serif;
+  --font-body: "Figtree Variable", sans-serif;
+
   /* Surfaces — Discord spatial hierarchy */
   --surface-0: #111113;        /* deepest bg — body, outermost shell */
   --surface-1: #1a1b1e;        /* sidebar rail bg */

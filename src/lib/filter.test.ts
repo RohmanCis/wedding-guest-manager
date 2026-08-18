@@ -49,4 +49,10 @@ describe("search and filtering", () => {
     seed();
     expect(listGuests({ search: "zzz" }).length).toBe(0);
   });
+
+  it("reset filters returns the full set", () => {
+    seed();
+    expect(listGuests({ search: "budi" }).length).toBe(2);
+    expect(listGuests({}).length).toBe(3);
+  });
 });

@@ -158,6 +158,7 @@ seeds default Parties/Groups automatically).
 | `DATABASE_URL` | the Supabase pooler URI from Phase 2 | Production, Preview, Development |
 | `ADMIN_USERNAME` | your login username (e.g. `admin`) | Production, Preview, Development |
 | `ADMIN_PASSWORD` | a strong password (NOT `admin`) | Production, Preview, Development |
+| `ADMIN_SESSION_SECRET` | (required) a stable 64 hex char string. The app fails to boot without it. Generate one: `node -e "console.log(Array.from({length:64},()=>'0123456789abcdef'[Math.floor(Math.random()*16)]).join(''))"`. | Production, Preview, Development |
 
 4. **Deploy** → wait ~1 min → you get `https://wedding-guest-manager.vercel.app`.
 5. Open it. Log in. The tables are created and seeded on first request.

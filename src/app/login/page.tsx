@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { getVariants } from "@/lib/animation-variants";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 

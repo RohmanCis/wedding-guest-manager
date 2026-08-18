@@ -24,7 +24,7 @@ export function CategoryDot({
   return (
     <span
       aria-hidden="true"
-      className={cn("size-2 shrink-0 rounded-full", colorFor(kind, name).dot, className)}
+        className={cn("size-2 shrink-0 rounded-full", colorFor(name).dot, className)}
     />
   );
 }
@@ -38,7 +38,7 @@ export function CategoryBadge({
   name: string;
   className?: string;
 }) {
-  const c = colorFor(kind, name);
+  const c = colorFor(name);
   const g = kind === "group" ? colorForGroup(name) : null;
   return (
     <span

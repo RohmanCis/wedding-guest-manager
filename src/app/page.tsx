@@ -42,8 +42,8 @@ import {
   DropdownMenuItem
 } from "@/components/ui/dropdown-menu";
 import { TopBar } from "@/components/app-shell";
-import { motion, AnimatePresence } from "framer-motion";
-import { getVariants } from "@/lib/animation-variants";
+import { motion, AnimatePresence } from "motion/react";
+import { getVariants, getRowVariants } from "@/lib/animation-variants";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import {
@@ -68,27 +68,6 @@ import {
 } from "@/components/ui/pagination";
 
 const PAGE_SIZE = 10;
-
-/** Local page-change motion following the getVariants pattern (reduced-motion safe). */
-type RowMotion = {
-  initial: { opacity: number; y: number };
-  animate: { opacity: number; y: number; transition: { duration: number; ease?: "easeOut" } };
-  exit: { opacity: number; y: number; transition: { duration: number; ease?: "easeOut" } };
-};
-function getRowMotion(reducedMotion: boolean): RowMotion {
-  if (reducedMotion) {
-    return {
-      initial: { opacity: 0, y: 0 },
-      animate: { opacity: 1, y: 0, transition: { duration: 0 } },
-      exit: { opacity: 0, y: 0, transition: { duration: 0 } }
-    };
-  }
-  return {
-    initial: { opacity: 0, y: 8 },
-    animate: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" } },
-    exit: { opacity: 0, y: -8, transition: { duration: 0.15, ease: "easeOut" } }
-  };
-}
 
 interface Ref {
   id: string;
@@ -398,7 +377,7 @@ export default function GuestsPage() {
               key={p.id}
               label={p.name}
               value={p.used ?? 0}
-              accent={colorFor("party", p.name).dot}
+              accent={colorFor(p.name).dot}
             />
           ))}
         </section>
@@ -526,9 +505,9 @@ export default function GuestsPage() {
                       <MotionTableRow
                         key={newGuestId === g.id ? `${g.id}-new` : g.id}
                         id={`guest-row-${g.id}`}
-                        initial={getRowMotion(!!reducedMotion).initial}
+                        initial={getRowVariants(!!reducedMotion).initial}
                         animate={{
-                          ...getRowMotion(!!reducedMotion).animate,
+                          ...getRowVariants(!!reducedMotion).animate,
                           ...(newGuestId === g.id
                             ? {
                                 backgroundColor: [
@@ -538,11 +517,11 @@ export default function GuestsPage() {
                               }
                             : {})
                         }}
-                        exit={getRowMotion(!!reducedMotion).exit}
+                        exit={getRowVariants(!!reducedMotion).exit}
                         transition={
                           newGuestId === g.id
                             ? { duration: 1.5, ease: "easeOut" }
-                            : getRowMotion(!!reducedMotion).animate.transition
+                            : getRowVariants(!!reducedMotion).animate.transition
                         }
                         onAnimationComplete={() => {
                           if (newGuestId === g.id) setNewGuestId(null);
@@ -750,13 +729,15 @@ export default function GuestsPage() {
                   {dupId ? (
                     <Alert variant="error">
                       <p>Tamu dengan nama ini sudah ada.</p>
-                      <button
+                      <Button
                         type="button"
+                        variant="link"
+                        size="sm"
+                        className="mt-1 px-0 text-xs"
                         onClick={viewExisting}
-                        className="mt-1 rounded text-xs font-medium text-accent-gold underline underline-offset-2 transition-colors hover:text-accent-gold-hover focus-visible:outline-none focus-visible:ring focus-visible:ring-ring"
                       >
                         Lihat di daftar →
-                      </button>
+                      </Button>
                     </Alert>
                   ) : (
                     formError && <Alert variant="error">{formError}</Alert>

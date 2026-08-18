@@ -19,9 +19,8 @@ import { TopBar } from "@/components/app-shell";
 import { PieChart } from "@/components/charts/pie-chart";
 import { PieSlice } from "@/components/charts/pie-slice";
 import { PieCenter } from "@/components/charts/pie-center";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { useAnalyticsData } from "@/hooks/use-analytics-data";
-import { colorForGroup } from "@/lib/party-colors";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { getVariants } from "@/lib/animation-variants";
@@ -72,7 +71,6 @@ export default function AnalyticsPage() {
 
   const hasFilter = !!(search.trim() || partyId || groupId);
   const data = mode === "party" ? byParty : byGroup;
-  const maxGroup = byGroup.reduce((m, d) => Math.max(m, d.value), 0);
 
   const filterFields = (
     <>
@@ -231,41 +229,6 @@ export default function AnalyticsPage() {
                   variant="no-results"
                   title="Tidak ada tamu ditemukan."
                 />
-              </div>
-            ) : mode === "group" ? (
-              <div className="mt-4 space-y-3">
-                {byGroup.map((d, index) => (
-                  <div key={d.label} className="space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="flex min-w-0 items-center gap-2 text-sm text-primary">
-                        <span
-                          aria-hidden="true"
-                          className="size-2 shrink-0 rounded-full"
-                          style={{
-                            backgroundColor: colorForGroup(d.label).dot
-                          }}
-                        />
-                        <span className="truncate">{d.label}</span>
-                      </span>
-                      <span className="text-xs text-muted">{d.value}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-surface-3">
-                      <motion.div
-                        className="h-2 rounded-full bg-accent-gold"
-                        initial={{ width: "0%" }}
-                        animate={{
-                          width: `${maxGroup ? (d.value / maxGroup) * 100 : 0}%`
-                        }}
-                        transition={{
-                          duration: reducedMotion ? 0 : 0.6,
-                          ease: "easeOut",
-                          delay: reducedMotion ? 0 : index * 0.05
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <p className="text-xs text-secondary">{totalGuests} tamu</p>
               </div>
             ) : (
               <div className="mt-4 flex justify-center">

@@ -7,19 +7,20 @@ export const usePagination = ({
   totalPages: number;
   paginationItemsToDisplay?: number;
 }) => {
-  const paginationItemsToDisplay_ = paginationItemsToDisplay + 2;
+  // +2 because the first and last pages are always shown in addition to the window.
+  const slots = paginationItemsToDisplay + 2;
   let pages: number[] = [];
 
-  const showLeftEllipsis = currentPage > paginationItemsToDisplay_ - 1;
+  const showLeftEllipsis = currentPage > slots - 1;
   const showRightEllipsis = currentPage < totalPages - 2;
 
-  if (totalPages <= paginationItemsToDisplay_) {
+  if (totalPages <= slots) {
     for (let i = 1; i <= totalPages; i++) pages.push(i);
   } else if (showLeftEllipsis && !showRightEllipsis) {
-    for (let i = totalPages - paginationItemsToDisplay_ + 2; i <= totalPages; i++)
+    for (let i = totalPages - slots + 2; i <= totalPages; i++)
       pages.push(i);
   } else if (!showLeftEllipsis && showRightEllipsis) {
-    for (let i = 1; i <= paginationItemsToDisplay_ - 1; i++) pages.push(i);
+    for (let i = 1; i <= slots - 1; i++) pages.push(i);
   } else {
     for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
   }

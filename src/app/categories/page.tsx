@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/loading";
 import { CategoryDot } from "@/components/ui/category-badge";
 import { TopBar } from "@/components/app-shell";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { getVariants } from "@/lib/animation-variants";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { Check, X, Pencil, Trash2 } from "lucide-react";

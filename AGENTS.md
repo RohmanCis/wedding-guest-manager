@@ -14,35 +14,35 @@ Agents must treat the PRD as the product source of truth and must not invent pro
 
 ## 0. Current State & Agent Bootstrap
 
-**Status: MVP COMPLETE + dark UI overhaul + `/analytics` distribution page (see Section 2 exception) + responsive dual nav (bottom nav `<lg`) + framer-motion transitions + group color identity (`colorForGroup`). Design source of truth: `DESIGN.md` (+ `.impeccable/design.json`). 35/35 tests green. Typecheck/build clean.**
+**Status: MVP COMPLETE + review-fix pass (2026-08-18: TOCTOU duplicate→409, shared route guard, Button link variant, Group mode donut, single hex source `CHART_HEX`, dead-code purge) + dark UI overhaul + `/analytics` distribution page (see Section 2 exception) + responsive dual nav (bottom nav `<lg`) + framer-motion transitions + group color identity (`colorForGroup`) + required `ADMIN_SESSION_SECRET` (2026-08-19: missing value = boot failure — replaces the random per-process fallback that split the secret between middleware and API routes and broke login; vitest setup now loads it from `.env.local`). Design source of truth: `DESIGN.md` (+ `.impeccable/design.json`). 37/37 tests green. Typecheck/build clean.**
 
 ### Stack
 
-Next.js 14.2 App Router · React 18 · TS 5.5 · Tailwind 3.4 · SQLite (`node:sqlite`, no ORM) · Vitest · Radix (dialog/select/dropdown/tooltip) · cva · lucide-react · framer-motion 13 (page transitions, modal pop, accordion, bar fills) · bklit pie-chart components (`src/components/charts/`, vendored via shadcn registry — `@visx/*`, `d3-shape`, `motion`, `@number-flow/react`).
+Next.js 14.2 App Router · React 18 · TS 5.5 · Tailwind 3.4 · SQLite (`node:sqlite`, no ORM) · Vitest · Radix (dialog/select/dropdown/tooltip) · cva · lucide-react · framer-motion 13 (page transitions, modal pop, accordion) · bklit pie-chart components (`src/components/charts/`, vendored via shadcn registry — `@visx/*`, `d3-shape`, `motion`, `@number-flow/react`).
 
 ### Auth
 
-Single admin. `src/lib/session.ts` (env `ADMIN_USERNAME`/`ADMIN_PASSWORD`, default `admin`/`admin`). Cookie session. `src/middleware.ts` guards all routes except `/login`, `/api/auth/login`, static assets, `icon.svg`.
+Single admin. `src/lib/session.ts` (env `ADMIN_USERNAME`/`ADMIN_PASSWORD`, default `admin`/`admin`; **required** `ADMIN_SESSION_SECRET` — a missing value throws `ADMIN_SESSION_SECRET environment variable is required` at module load, i.e. boot failure, not silent cookie invalidation; the secret must be shared by middleware and API routes so they mint/accept the same cookie). Cookie session. `src/middleware.ts` guards all routes except `/login`, `/api/auth/login`, static assets, `icon.svg`.
 
 ### File Map — read only what the task needs
 
 | Path | ~Loc | Role |
 |---|---|---|
-| `src/lib/guests.ts` | 164 | Guest CRUD, duplicate check, CSV export — ALL guest business rules |
+| `src/lib/guests.ts` | 204 | Guest CRUD, duplicate check (app pre-check + DB UNIQUE race → `DuplicateNameError`), CSV export — ALL guest business rules |
 | `src/lib/categories.ts` | 80 | Party/Group CRUD, rename, safe-delete guard |
 | `src/lib/normalize.ts` | 25 | `normalizeName` (BR-006), `DuplicateNameError(existingId)` |
 | `src/lib/db.ts` | 97 | SQLite schema + seed; `guests.name_norm` UNIQUE (DB-enforced dedup) |
 | `src/lib/client.ts` | 29 | `apiGet`/`apiSend` → throws `ApiError{existingId}` |
 | `src/app/page.tsx` | 609 | Guest dashboard (client): stats, responsive filter toolbar, table (MotionTableRow new-guest flash), modals, BR-007 "Lihat di daftar →", mobile sticky action bar |
 | `src/app/categories/page.tsx` | 313 | Category management (client) |
-| `src/app/analytics/page.tsx` | 311 | Analytics (client): filter panel (mobile accordion) + responsive donut by Party / animated bar list by Group; read-only, local filter state |
+| `src/app/analytics/page.tsx` | 288 | Analytics (client): filter panel (mobile accordion) + donut for both Party and Group modes; read-only, local filter state |
 | `src/app/login/page.tsx` | 89 | Login (client) |
-| `src/hooks/use-analytics-data.ts` | 90 | `useAnalyticsData({search,partyId,groupId})` → `{isLoading,error,totalGuests,byParty,byGroup}`; reuses `/api/guests` filter semantics |
+| `src/hooks/use-analytics-data.ts` | 81 | `useAnalyticsData({search,partyId,groupId})` → `{isLoading,error,totalGuests,byParty,byGroup}`; reuses `/api/guests` filter semantics; slice colors via `partyHex`/`colorForGroup` |
 | `src/hooks/use-is-mobile.ts` | 17 | `useIsMobile()` — <640px match, resize listener, SSR-guard false |
 | `src/hooks/use-reduced-motion.ts` | 4 | Re-export of framer-motion `useReducedMotion` (single import site) |
-| `src/lib/animation-variants.ts` | 19 | Shared `pageVariants` + `getVariants(reducedMotion)` zeroing |
-| `src/app/api/guests/route.ts` | 79 | GET list/csv · POST · PUT · DELETE |
-| `src/app/api/categories/route.ts` | 69 | GET · POST · DELETE |
+| `src/lib/animation-variants.ts` | 42 | Shared `pageVariants` + `getVariants(reducedMotion)` zeroing + `getRowVariants` (table-row motion) |
+| `src/app/api/guests/route.ts` | 77 | GET list/csv · POST · PUT · DELETE (shared `guard()` from `lib/auth`) |
+| `src/app/api/categories/route.ts` | 59 | GET · POST · PUT · DELETE (shared `guard()` + `errorResponse`) |
 | `src/app/api/auth/login/route.ts` | 24 | POST login · DELETE logout |
 | `src/components/ui/` | — | 12 shared components: button input select modal card alert table stat-card empty-state loading dropdown-menu category-badge |
 | `src/components/charts/` | — | 14 vendored bklit chart files: PieChart/PieSlice/PieCenter + context/animation helpers; do not hand-edit |
@@ -50,14 +50,14 @@ Single admin. `src/lib/session.ts` (env `ADMIN_USERNAME`/`ADMIN_PASSWORD`, defau
 | `DESIGN.md` | — | Design system source of truth (tokens, typography, elevation, components, rules) |
 | `.impeccable/design.json` | — | Machine-readable design sidecar (schemaVersion 2) |
 | `src/components/app-shell.tsx` | 150 | App shell: dual nav — 72px icon rail + tooltips + logout (lg+) · mobile bottom nav h-14 (<lg) · `TopBar`; `/login` renders without chrome |
-| `src/lib/party-colors.ts` | 154 | Color identity per Party (`colorFor`) + Group (`colorForGroup` hex identity) + deterministic hash fallbacks |
+| `src/lib/party-colors.ts` | 175 | Single color source: Party identity (`colorFor(name)`), Group hex identity (`colorForGroup`), `CHART_HEX` + `partyHex` (SVG slice fills), deterministic hash fallbacks |
 | `src/lib/api-error.ts` | 22 | `ApiError` class — carries `existingId` for 409 duplicate responses (BR-007) |
-| `src/lib/auth.ts` | 16 | Login credential check (timing-safe compare) |
+| `src/lib/auth.ts` | 27 | Login credential check (timing-safe compare) + shared API-route `guard()` |
 | `src/lib/utils.ts` | 6 | `cn()` class merge helper |
 | `src/types/node-sqlite.d.ts` | 23 | Ambient declaration for `node:sqlite` |
 | `src/app/layout.tsx` | 38 | Root layout — Fraunces/Figtree fonts, dark class, `AppShell` mount |
 | `src/app/globals.css` | 85 | Design tokens as CSS variables + base styles |
-| tests | — | `guests.test.ts` 13 · `categories.test.ts` 10 · `filter.test.ts` 7 · `auth.test.ts` 5 — colocated in `src/lib/` |
+| tests | — | `guests.test.ts` 14 · `categories.test.ts` 10 · `filter.test.ts` 8 · `auth.test.ts` 5 — colocated in `src/lib/` |
 
 ### Key invariants — do not break
 

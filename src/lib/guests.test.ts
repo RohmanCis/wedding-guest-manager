@@ -5,7 +5,8 @@ import {
   updateGuest,
   deleteGuest,
   listGuests,
-  getGuest
+  getGuest,
+  exportGuestsCsv
 } from "@/lib/guests";
 import {
   DuplicateNameError,
@@ -131,4 +132,15 @@ describe("guest create/update/delete", () => {
     deleteGuest(a.id);
     expect(() => getGuest(a.id)).toThrow(NotFoundError);
   });
+
+  it("exports a valid header-only CSV when the filtered result is empty", () => {
+    seed();
+    expect(exportGuestsCsv({ search: "zzz" })).toBe("Name,Address,Party,Group");
+  });
 });
+
+function seed() {
+  const p = parties.list()[0];
+  const g = groups.list()[0];
+  createGuest({ name: "Ani", address: "A", partyId: p.id, groupId: g.id });
+}

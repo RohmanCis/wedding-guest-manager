@@ -84,6 +84,11 @@ components:
     rounded: "{rounded.lg}"
     padding: "8px 16px"
     height: "36px"
+  button-link:
+    backgroundColor: "transparent"
+    textColor: "{colors.accent-gold}"
+    rounded: "{rounded.md}"
+    padding: "0"
   input:
     backgroundColor: "{colors.surface-3}"
     textColor: "{colors.text-primary}"
@@ -133,7 +138,7 @@ Dark is the only theme. It is hard-coded on `<html>` with no toggle and no syste
 The palette is a cool dark neutral ladder warmed by a single gold voice, with rose and cream as supporting wedding tones.
 
 ### Primary
-- **Wedding Gold** (#c9a84c): the one action voice — primary buttons, active nav state, focus ring, selected-option checkmarks, loading spinner, bar-chart fill. Hover lifts to Lighter Gold (#d4b565).
+- **Wedding Gold** (#c9a84c): the one action voice — primary buttons, active nav state, focus ring, selected-option checkmarks, loading spinner, link buttons, donut highlight accents. Hover lifts to Lighter Gold (#d4b565).
 - **Warm Cream** (#f0e6d3): high-emphasis text only — page titles, modal titles, stat values. Never a background, never body text.
 
 ### Secondary
@@ -160,11 +165,11 @@ The palette is a cool dark neutral ladder warmed by a single gold voice, with ro
 - **chart-1 Gold** (#c9a84c), **chart-2 Rose** (#c4717a), **chart-3 Steel** (#7a9cc4), **chart-4 Sage** (#7ac49c), **chart-5 Sand** (#c49c7a): the identity ramp for Party/Group color coding — badges, stat-card accent bars, chart slices.
 
 ### The party-colors.ts Identity System
-`src/lib/party-colors.ts` is the single source of category color truth. Named parties (Groom, Bride, Groom Family, Bride Family) and groups map to fixed identities; anything user-created resolves through a deterministic name hash (`h * 31 + charCode`) into an eight-entry FALLBACK palette, so colors are stable forever. Each identity is a `CategoryColor` quadruple: `dot` (solid swatch), `bg` (subtle badge background), `text` (contrast-safe badge text, ≥4.5:1 on its background), `border` (accent). Badge bg/text use literal hexes because Tailwind opacity modifiers can't consume `var()` colors.
+`src/lib/party-colors.ts` is the single source of category color truth. Named parties (Groom, Bride, Groom Family, Bride Family) map to fixed identities; anything user-created resolves through a deterministic name hash (`h * 31 + charCode`) into an eight-entry FALLBACK palette, so colors are stable forever. Each identity is a `CategoryColor` quadruple: `dot` (solid swatch), `bg` (subtle badge background), `text` (contrast-safe badge text, ≥4.5:1 on its background), `border` (accent). Badge bg/text use literal hexes because Tailwind opacity modifiers can't consume `var()` colors. `CHART_HEX` + `partyHex(name)` resolve the same identities to SVG hex fills for donut slices.
 
 **The One Voice Rule.** Wedding Gold is the only color that ever means "act" — one primary action per view. Its rarity is the point.
 
-**The Identity Rule.** Category color is always resolved through `colorFor(kind, name)`. A category means the same color on every page, forever — never rank, never order, never inline hex.
+**The Identity Rule.** Party color is always resolved through `colorFor(name)`; group color through `colorForGroup(name)`. A category means the same color on every page, forever — never rank, never order, never inline hex.
 
 ## Typography
 
@@ -201,7 +206,7 @@ Depth comes from the five-step surface ladder first; shadows are a secondary, st
 Motion conventions: page transitions are framer-motion fade-and-rise (16px to 0, 0.22s easeOut) on every page's main content via shared `pageVariants`; modals scale 0.96 → 1 over 0.18s; micro-interactions stay Tailwind-only — buttons press to 95% scale, badges transition colors over 200ms, stat cards lift a shadow level on hover, nav items press to 90%. `getVariants(reducedMotion)` zeroes durations and travel when the user prefers reduced motion; the modal drops its scale but keeps the fade.
 
 ### Button
-Four variants, four sizes, one loading pattern. **Primary** is Wedding Gold with Inverse Text, semibold, shadow-1 lifting to shadow-2 on hover. **Secondary** is Surface 3 with a default border, stepping to Surface 4 on hover. **Ghost** is transparent Secondary Text, gaining a Surface 3 wash on hover — the toolbar and icon-action workhorse. **Danger** is solid red reserved for confirm-delete dialogs only, never a row-level trigger. Sizes: `sm` (28px), `md` (36px, default), `lg` (40px), `icon` (32px square). Loading swaps in a Spinner matching the button's text color, disables the button, sets `aria-busy`. Every button carries the gold focus ring offset against its parent surface.
+Five variants, four sizes, one loading pattern. **Primary** is Wedding Gold with Inverse Text, semibold, shadow-1 lifting to shadow-2 on hover. **Secondary** is Surface 3 with a default border, stepping to Surface 4 on hover. **Ghost** is transparent Secondary Text, gaining a Surface 3 wash on hover — the toolbar and icon-action workhorse. **Danger** is solid red reserved for confirm-delete dialogs only, never a row-level trigger. **Link** is a gold underlined text button (auto-height, no padding, keeps the focus ring) for inline text actions like the BR-007 "Lihat di daftar →" jump inside alerts. Sizes: `sm` (28px), `md` (36px, default), `lg` (40px), `icon` (32px square). Loading swaps in a Spinner matching the button's text color, disables the button, sets `aria-busy`. Every button carries the gold focus ring offset against its parent surface.
 
 ### Input + Field
 Inputs rest on Surface 3 with a default border, 36px tall, `text-sm`. Focus shifts the border to strong and adds the gold ring. Error state turns the border Danger red and sets `aria-invalid`; the Field wrapper renders the error in red `text-xs` with `role="alert"` directly beneath, label above in Secondary Text. Select (Radix) matches Input styling exactly, with a muted chevron and gold check on the selected item.
@@ -223,7 +228,7 @@ Flat Surface 3 card (12px radius, 80px minimum height, shadow-1 lifting to shado
 ### Category Badge
 Party badges carry the identity: 6px color dot plus subtle identity background with contrast-safe identity text. Group badges resolve through their own `colorForGroup` identity (below). Parties and groups each own a distinct color-coded axis.
 
-**Group identity — `colorForGroup(name)`.** Groups resolve through `colorForGroup(name)` from `src/lib/party-colors.ts`: eight named hex identities (Rekan Kerja `#5B8CDB` through Lainnya `#8A8FA8`), with unmapped names falling back through the same deterministic `h * 31 + charCode` hash into that palette. It returns `{ dot, bg, text }` — `bg` is the dot at 15% alpha, `text` is the dot lightened toward white to hold ≥4.5:1 on the tinted background — applied via inline style, because dynamically built arbitrary-value Tailwind classes are invisible to the JIT scanner. Group dots and badges carry this identity everywhere they render: filter selects, table badges, the category list, and analytics bars.
+**Group identity — `colorForGroup(name)`.** Groups resolve through `colorForGroup(name)` from `src/lib/party-colors.ts`: eight named hex identities (Rekan Kerja `#5B8CDB` through Lainnya `#8A8FA8`), with unmapped names falling back through the same deterministic `h * 31 + charCode` hash into that palette. It returns `{ dot, bg, text }` — `bg` is the dot at 15% alpha, `text` is the dot lightened toward white to hold ≥4.5:1 on the tinted background — applied via inline style, because dynamically built arbitrary-value Tailwind classes are invisible to the JIT scanner. Group dots and badges carry this identity everywhere they render: filter selects, table badges, the category list, and analytics donut slices.
 
 ### App Shell
 Dual navigation, one shell. Desktop (`lg` and up): a 72px fixed left rail on Surface 1 — Fraunces gold "WG" brand mark in a 36px circle, a divider, then icon-only nav (44px targets, 20px icons) with Radix Tooltips on the right side at 300ms delay. Active route is Wedding Gold on a gold-subtle wash, rounded 12px; inactive icons are muted, warming on hover. Logout sits pinned at the bottom.
@@ -233,7 +238,7 @@ Mobile (below `lg`): a fixed bottom navigation bar (56px, Surface 1, top border,
 A sticky 48px top bar on Surface 2 holds the page title and contextual actions. `/login` renders fullscreen without any navigation chrome.
 
 ### Analytics
-Read-only distribution view. Desktop places a flat filter card beside an elevated chart card (`lg:grid-cols-3`); on mobile the filter panel becomes a collapsible accordion above the chart (collapsed by default, AnimatePresence height animation, chevron rotating 180°). Party mode renders the donut — fixed 280px on desktop, fluid via the chart library's ParentSize inside a 280px cap on mobile; Group mode renders a vertical bar list whose gold fills animate from zero width over 600ms with a 50ms stagger. The chart panel holds a 320px minimum height so loading and loaded states never shift layout, and group rows carry `colorForGroup` identity dots.
+Read-only distribution view. Desktop places a flat filter card beside an elevated chart card (`lg:grid-cols-3`); on mobile the filter panel becomes a collapsible accordion above the chart (collapsed by default, AnimatePresence height animation, chevron rotating 180°). Both Party and Group modes render the donut — fixed 280px on desktop, fluid via the chart library's ParentSize inside a 280px cap on mobile — with slice fills from `partyHex` (Party) and `colorForGroup().dot` (Group). The chart panel holds a 320px minimum height so loading and loaded states never shift layout.
 
 ### Supporting Cast
 Alert (error/success/warning: left border stripe, 12%-alpha semantic wash, matching icon; info: strong border on Surface 3 with a secondary-text icon), Dropdown Menu (Surface 4, 12px radius, shadow-2, danger items in red), Card (elevated Surface 4 / flat Surface 3 / interactive with hover shadow-3), Empty State (dashed border, muted 40px icon, optional action), Loading (gold spinner, shimmer skeletons, role="status" table skeleton).
@@ -242,7 +247,7 @@ Alert (error/success/warning: left border stripe, 12%-alpha semantic wash, match
 
 ### Do:
 - **Do** use CSS variables / Tailwind token classes for every color — never raw hex in components (the one sanctioned exception: `party-colors.ts` badge hexes, which exist because Tailwind opacity modifiers can't consume `var()`).
-- **Do** resolve every category color through `party-colors.ts` `colorFor(kind, name)` — badges, dots, stat accents, chart slices, all of them.
+- **Do** resolve every party color through `party-colors.ts` `colorFor(name)` and every group color through `colorForGroup(name)` — badges, dots, stat accents, chart slices, all of them.
 - **Do** always use `colorForGroup()` for group color resolution — never inline group hex values.
 - **Do** keep table row actions on the hover-reveal pattern (opacity transition, always visible to keyboard focus-within and touch).
 - **Do** keep one Wedding Gold primary action per view; subordinate actions go secondary or ghost.

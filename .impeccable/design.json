@@ -31,7 +31,6 @@
       { "name": "page-transition", "value": "0.22s easeOut, opacity 0→1 + y 16→0 (getVariants zeroes under reduced motion)", "purpose": "Per-page main content entrance via shared pageVariants." },
       { "name": "modal-pop", "value": "0.18s easeOut, opacity 0→1 + scale 0.96→1 (scale dropped under reduced motion)", "purpose": "Dialog entrance/exit via AnimatePresence." },
       { "name": "row-flash", "value": "1.5s, accent-gold-subtle → transparent", "purpose": "Newly saved guest row highlight (MotionTableRow)." },
-      { "name": "bar-fill", "value": "0.6s easeOut + 50ms stagger per row, width 0→value%", "purpose": "Analytics group bar-list fill entrance." },
       { "name": "press-scale", "value": "100–150ms, scale 0.95 (buttons) / 0.90 (nav items)", "purpose": "Tailwind-only press feedback on interactive elements." }
     ]
   },
@@ -67,6 +66,14 @@
       "description": "Solid red, confirm-delete dialogs only — never a row-level trigger.",
       "html": "<button class=\"ds-btn-danger\">Hapus</button>",
       "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border: none; border-radius: 8px; background: var(--color-danger); color: #ffffff; font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; transition: all 150ms; cursor: pointer; } .ds-btn-danger:hover { opacity: 0.9; } .ds-btn-danger:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Link Button",
+      "kind": "button",
+      "refersTo": "button-link",
+      "description": "Gold underlined text button for inline text actions (e.g. \"Lihat di daftar →\" inside alerts); auto-height, keeps the gold focus ring.",
+      "html": "<button class=\"ds-btn-link\">Lihat di daftar →</button>",
+      "css": ".ds-btn-link { display: inline-flex; align-items: center; gap: 4px; height: auto; padding: 0; border: none; border-radius: 6px; background: transparent; color: var(--accent-primary); font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 2px; transition: color 150ms; cursor: pointer; } .ds-btn-link:hover { color: var(--accent-primary-hover); } .ds-btn-link:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
     },
     {
       "name": "Text Input",
@@ -142,13 +149,13 @@
     ],
     "rules": [
       { "name": "The One Voice Rule", "body": "Wedding Gold is the only color that ever means \"act\" — one primary action per view. Its rarity is the point.", "section": "colors" },
-      { "name": "The Identity Rule", "body": "Category color is always resolved through colorFor(kind, name). A category means the same color on every page, forever — never rank, never order, never inline hex.", "section": "colors" },
+      { "name": "The Identity Rule", "body": "Party color is always resolved through colorFor(name); group color through colorForGroup(name). A category means the same color on every page, forever — never rank, never order, never inline hex.", "section": "colors" },
       { "name": "The Brand-Only Display Rule", "body": "Fraunces appears only in the brand mark and login title. Page headings, card titles, and content are always Figtree medium/semibold — never display type in content.", "section": "typography" },
       { "name": "The State-Responsive Elevation Rule", "body": "Elevation increases only in response to state. Body and resting content carry no shadow; cards hold shadow-1/shadow-2; hover may step up one level; modals alone use shadow-modal.", "section": "elevation" }
     ],
     "dos": [
       "Do use CSS variables / Tailwind token classes for every color — never raw hex in components (the one sanctioned exception: party-colors.ts badge hexes).",
-      "Do resolve every category color through party-colors.ts colorFor(kind, name) — badges, dots, stat accents, chart slices, all of them.",
+      "Do resolve every party color through party-colors.ts colorFor(name) and every group color through colorForGroup(name) — badges, dots, stat accents, chart slices, all of them.",
       "Do always use colorForGroup() for group color resolution — never inline group hex values.",
       "Do keep table row actions on the hover-reveal pattern (opacity transition, always visible to keyboard focus-within and touch).",
       "Do keep one Wedding Gold primary action per view; subordinate actions go secondary or ghost.",

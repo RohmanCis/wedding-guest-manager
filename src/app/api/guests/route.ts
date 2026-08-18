@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE, validSession } from "@/lib/auth";
+import { guard } from "@/lib/auth";
 import {
   listGuests,
   createGuest,
@@ -10,14 +10,6 @@ import {
   GuestInput
 } from "@/lib/guests";
 import { errorResponse } from "@/lib/api-error";
-
-function guard(req: NextRequest): NextResponse | null {
-  const cookie = req.cookies.get(SESSION_COOKIE)?.value;
-  if (!validSession(cookie)) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
-  return null;
-}
 
 function toFilter(req: NextRequest): GuestFilter {
   const sp = req.nextUrl.searchParams;

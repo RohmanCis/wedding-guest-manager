@@ -102,19 +102,29 @@ export function createGuest(input: GuestInput): GuestWithRefs {
   if (existing) throw new DuplicateNameError(existing.id);
   const id = cryptoId();
   const now = new Date().toISOString();
-  db.prepare(
-    `INSERT INTO guests (id, name, name_norm, address, party_id, group_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    id,
-    input.name.trim(),
-    nameNorm,
-    input.address.trim(),
-    input.partyId,
-    input.groupId,
-    now,
-    now
-  );
+  try {
+    db.prepare(
+      `INSERT INTO guests (id, name, name_norm, address, party_id, group_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      id,
+      input.name.trim(),
+      nameNorm,
+      input.address.trim(),
+      input.partyId,
+      input.groupId,
+      now,
+      now
+    );
+  } catch (e) {
+    if (isNameNormUniqueError(e)) {
+      const row = db
+        .prepare("SELECT id FROM guests WHERE name_norm = ?")
+        .get(nameNorm) as { id: string } | undefined;
+      if (row) throw new DuplicateNameError(row.id);
+    }
+    throw e;
+  }
   return getGuest(id);
 }
 
@@ -133,20 +143,37 @@ export function updateGuest(id: string, input: GuestInput): GuestWithRefs {
     if (existing) throw new DuplicateNameError(existing.id);
   }
   const now = new Date().toISOString();
-  db.prepare(
-    `UPDATE guests SET name = @name, name_norm = @name_norm, address = @address,
-       party_id = @party_id, group_id = @group_id, updated_at = @updated_at
-     WHERE id = @id`
-  ).run({
-    id,
-    name: input.name.trim(),
-    name_norm: nameNorm,
-    address: input.address.trim(),
-    party_id: input.partyId,
-    group_id: input.groupId,
-    updated_at: now
-  });
+  try {
+    db.prepare(
+      `UPDATE guests SET name = @name, name_norm = @name_norm, address = @address,
+         party_id = @party_id, group_id = @group_id, updated_at = @updated_at
+       WHERE id = @id`
+    ).run({
+      id,
+      name: input.name.trim(),
+      name_norm: nameNorm,
+      address: input.address.trim(),
+      party_id: input.partyId,
+      group_id: input.groupId,
+      updated_at: now
+    });
+  } catch (e) {
+    if (isNameNormUniqueError(e)) {
+      const row = db
+        .prepare("SELECT id FROM guests WHERE name_norm = ? AND id != ?")
+        .get(nameNorm, id) as { id: string } | undefined;
+      if (row) throw new DuplicateNameError(row.id);
+    }
+    throw e;
+  }
   return getGuest(id);
+}
+
+function isNameNormUniqueError(e: unknown): boolean {
+  return (
+    e instanceof Error &&
+    e.message.includes("UNIQUE constraint failed: guests.name_norm")
+  );
 }
 
 export function deleteGuest(id: string): void {

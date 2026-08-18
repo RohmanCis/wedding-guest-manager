@@ -15,7 +15,8 @@ const buttonVariants = cva(
         secondary:
           "border border-default bg-surface-3 text-primary hover:bg-surface-4",
         ghost: "text-secondary hover:bg-surface-3 hover:text-primary",
-        danger: "bg-danger text-white hover:opacity-90"
+        danger: "bg-danger text-white hover:opacity-90",
+        link: "h-auto rounded p-0 text-accent-gold underline underline-offset-2 hover:text-accent-gold-hover"
       },
       size: {
         sm: "h-7 rounded-md px-3 text-xs",

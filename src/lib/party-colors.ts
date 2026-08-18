@@ -21,62 +21,62 @@ export interface CategoryColor {
 
 const chart1: CategoryColor = {
   dot: "bg-chart-1",
-  bg: "bg-[#b05730]/10 dark:bg-[#c9a84c]/15",
-  text: "text-[#8f4526] dark:text-[#d4b565]",
+  bg: "bg-[#c9a84c]/15",
+  text: "text-[#d4b565]",
   border: "border-t-chart-1"
 };
 const chart2: CategoryColor = {
   dot: "bg-chart-2",
-  bg: "bg-[#9c87f5]/10 dark:bg-[#c4717a]/15",
-  text: "text-[#6f56d6] dark:text-[#dda0a7]",
+  bg: "bg-[#c4717a]/15",
+  text: "text-[#dda0a7]",
   border: "border-t-chart-2"
 };
 const chart3: CategoryColor = {
   dot: "bg-chart-3",
-  bg: "bg-[#ded8c4]/50 dark:bg-[#7a9cc4]/15",
-  text: "text-[#7d7457] dark:text-[#a8c0dd]",
+  bg: "bg-[#7a9cc4]/15",
+  text: "text-[#a8c0dd]",
   border: "border-t-chart-3"
 };
 const chart4: CategoryColor = {
   dot: "bg-chart-4",
-  bg: "bg-[#dbd3f0]/50 dark:bg-[#7ac49c]/15",
-  text: "text-[#6656a8] dark:text-[#a5dcc0]",
+  bg: "bg-[#7ac49c]/15",
+  text: "text-[#a5dcc0]",
   border: "border-t-chart-4"
 };
 const chart5: CategoryColor = {
   dot: "bg-chart-5",
-  bg: "bg-[#b4552d]/10 dark:bg-[#c49c7a]/15",
-  text: "text-[#8f4526] dark:text-[#dec2a6]",
+  bg: "bg-[#c49c7a]/15",
+  text: "text-[#dec2a6]",
   border: "border-t-chart-5"
 };
 const blue: CategoryColor = {
   dot: "bg-blue-500",
-  bg: "bg-blue-500/10 dark:bg-blue-400/15",
-  text: "text-blue-700 dark:text-blue-400",
+  bg: "bg-blue-400/15",
+  text: "text-blue-400",
   border: "border-t-blue-500"
 };
 const emerald: CategoryColor = {
   dot: "bg-emerald-500",
-  bg: "bg-emerald-500/10 dark:bg-emerald-400/15",
-  text: "text-emerald-700 dark:text-emerald-400",
+  bg: "bg-emerald-400/15",
+  text: "text-emerald-400",
   border: "border-t-emerald-500"
 };
 const amber: CategoryColor = {
   dot: "bg-amber-500",
-  bg: "bg-amber-500/10 dark:bg-amber-400/15",
-  text: "text-amber-700 dark:text-amber-400",
+  bg: "bg-amber-400/15",
+  text: "text-amber-400",
   border: "border-t-amber-500"
 };
 const pink: CategoryColor = {
   dot: "bg-pink-500",
-  bg: "bg-pink-500/10 dark:bg-pink-400/15",
-  text: "text-pink-700 dark:text-pink-400",
+  bg: "bg-pink-400/15",
+  text: "text-pink-400",
   border: "border-t-pink-500"
 };
 const gray: CategoryColor = {
   dot: "bg-gray-500",
-  bg: "bg-gray-500/10 dark:bg-gray-400/15",
-  text: "text-gray-700 dark:text-gray-400",
+  bg: "bg-gray-400/15",
+  text: "text-gray-400",
   border: "border-t-gray-500"
 };
 
@@ -87,22 +87,30 @@ export const partyColors: Record<string, CategoryColor> = {
   "Bride Family": chart4
 };
 
-export const groupColors: Record<string, CategoryColor> = {
-  "Rekan Kerja": chart1,
-  Sekolah: chart2,
-  Kuliah: chart5,
-  Tetangga: blue,
-  Saudara: emerald,
-  Teman: amber,
-  Komunitas: pink,
-  Lainnya: gray
-};
-
 const FALLBACK = [chart1, chart2, chart5, blue, emerald, amber, pink, gray];
 
-export function colorFor(kind: "party" | "group", name: string): CategoryColor {
-  const map = kind === "party" ? partyColors : groupColors;
-  const hit = map[name];
+/** Single hex source: dot class → chart/palette hex. Dark is the only theme. */
+export const CHART_HEX: Record<string, string> = {
+  "bg-chart-1": "#c9a84c",
+  "bg-chart-2": "#c4717a",
+  "bg-chart-3": "#7a9cc4",
+  "bg-chart-4": "#7ac49c",
+  "bg-chart-5": "#c49c7a",
+  "bg-blue-500": "#3b82f6",
+  "bg-emerald-500": "#10b981",
+  "bg-amber-500": "#f59e0b",
+  "bg-pink-500": "#ec4899",
+  "bg-gray-500": "#6b7280"
+};
+
+/** Hex fill for a party name, resolved through colorFor. */
+export function partyHex(name: string): string {
+  return CHART_HEX[colorFor(name).dot] ?? "#c9a84c";
+}
+
+/** Party color identity. Groups resolve through colorForGroup instead. */
+export function colorFor(name: string): CategoryColor {
+  const hit = partyColors[name];
   if (hit) return hit;
   // Deterministic fallback for user-created categories.
   let h = 0;

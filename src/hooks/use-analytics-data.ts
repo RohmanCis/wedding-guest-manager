@@ -2,35 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/client";
-import { colorFor } from "@/lib/party-colors";
+import { partyHex, colorForGroup } from "@/lib/party-colors";
 import type { PieData } from "@/components/charts/pie-context";
 
 interface AnalyticsGuest {
   id: string;
   party_name: string;
   group_name: string;
-}
-
-/**
- * colorFor() returns Tailwind classes, but SVG slices need hex fills.
- * chart-1..5 map to the updated --chart-N token values; the rest map to
- * their Tailwind palette hexes.
- */
-const DOT_HEX: Record<string, string> = {
-  "bg-chart-1": "#c9a84c",
-  "bg-chart-2": "#c4717a",
-  "bg-chart-3": "#7a9cc4",
-  "bg-chart-4": "#7ac49c",
-  "bg-chart-5": "#c49c7a",
-  "bg-blue-500": "#3b82f6",
-  "bg-emerald-500": "#10b981",
-  "bg-amber-500": "#f59e0b",
-  "bg-pink-500": "#ec4899",
-  "bg-gray-500": "#6b7280"
-};
-
-function partyHex(name: string): string {
-  return DOT_HEX[colorFor("party", name).dot] ?? "#c9a84c";
 }
 
 function aggregate(
@@ -80,7 +58,12 @@ export function useAnalyticsData({
             color: partyHex(d.label)
           }))
         );
-        setByGroup(aggregate(data.guests, "group_name"));
+        setByGroup(
+          aggregate(data.guests, "group_name").map((d) => ({
+            ...d,
+            color: colorForGroup(d.label).dot
+          }))
+        );
       })
       .catch((e: unknown) => {
         if (!active) return;
