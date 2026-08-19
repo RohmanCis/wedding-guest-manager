@@ -9,3 +9,7 @@ node_modules/
 !.env.example
 .playwright-mcp/
 *.tsbuildinfo
+
+*.log
+supabase/
+qa-root.png
