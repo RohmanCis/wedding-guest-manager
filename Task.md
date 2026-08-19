@@ -41,3 +41,5 @@ Standar eksekusi task: spesifik, bersih, tidak ada perubahan di luar scope. Sele
 | Deploy Vercel live | done | Root cause situs rusak: build lama (SQLite pra-port) karena project Vercel tidak connect GitHub (env import saja). Setelah connect repo + push, live hijau: login/API/SSR/CSV 200 |
 | Migrasi data SQLite → Supabase | done | 21 tamu + 4 party + 6 group dipindah (map kategori by name, idempotent by id); diverifikasi live: API 21 guests, party counts benar, CSV 22 baris |
 | Cleanup repo | done | log/supabase `.temp`/QA artifacts keluar dari tracking + `.gitignore`; commit `4375d08` |
+| Fix login stuck (Edge + cookie) | done | `session.ts` no module-load throw (empty-secret fallback, fail-closed `validSession`); cookie `secure:true` + `maxAge` 7d; matcher exclude `/api/auth/*`; commit `47369c0` |
+| Fix login stuck (SPA nav race) | done | login success → `window.location.href` full load (bukan `router.push`+`refresh` — race cookie commit vs middleware); typecheck/build green; commit `564072a`; e2e live terverifikasi: login 200, cookie Secure/Max-Age 604800, SSR 200, API 21 guests, CSV 22 baris |
