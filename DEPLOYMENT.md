@@ -1,5 +1,17 @@
 # Deployment Plan — GitHub + Supabase + Vercel
 
+> **STATUS: SELESAI & LIVE (2026-08-19)** — https://wedding-guest-manager-pi.vercel.app
+> Semua phase (0–6) selesai. Data lokal (21 tamu) sudah dimigrasi ke Supabase.
+> Live di GitHub: https://github.com/RohmanCis/wedding-guest-manager (main, auto-deploy aktif).
+>
+> Pelajaran penting (jangan diulang): Vercel project **harus di-connect ke GitHub repo** lewat
+> Settings → Git. Import env vars saja tidak mendeploy kode — app lama tetap ter-serve. Setelah
+> connect, setiap `git push` ke `main` auto-deploy.
+>
+> Pelajaran teknis: SSR page + pool postgres.js `max:1` **wajib sequential await**, bukan
+> `Promise.all` — konkurensi query list (yang fan-out refCount) deadlock 240s+. Sudah fixed
+> di `src/app/(app)/*/page.tsx`; jangan refactor balik ke `Promise.all`.
+
 Goal: use Wedding Guest Manager on your phone, anywhere, with the data safely in the cloud.
 
 ## The Architecture (read this first)

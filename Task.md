@@ -37,3 +37,7 @@ Standar eksekusi task: spesifik, bersih, tidak ada perubahan di luar scope. Sele
 | Struktur folder (lama) | done | audit clean, zero perubahan |
 | 1 — Statistik bar | done | `analytics-bar-chart.tsx` (horizontal bar, colorFor mode-aware, CSS entrance, sr-only table); visx/d3/number-flow keluar dari bundle; typecheck + 42/42 tests + build green |
 | Deploy Phase 3 — SQLite→Postgres | done | postgres.js (prepare:false, max:1); `db.ts`/`guests.ts`/`categories.ts` async; SSR pages + API routes await; vitest per-worker schema `test_w<N>` via search_path; node-sqlite.d.ts dihapus; typecheck + 42/42 tests (vs Supabase) + build green |
+| Fix SSR deadlock | done | `Promise.all` list queries + pool `max:1` = deadlock 240–300s; fix: sequential awaits di 3 SSR page (`(app)/page.tsx`, categories, analytics) + `postgres` di `serverComponentsExternalPackages`; prod smoke 200 semua page <1.4s; commit `ea0eeb0` |
+| Deploy Vercel live | done | Root cause situs rusak: build lama (SQLite pra-port) karena project Vercel tidak connect GitHub (env import saja). Setelah connect repo + push, live hijau: login/API/SSR/CSV 200 |
+| Migrasi data SQLite → Supabase | done | 21 tamu + 4 party + 6 group dipindah (map kategori by name, idempotent by id); diverifikasi live: API 21 guests, party counts benar, CSV 22 baris |
+| Cleanup repo | done | log/supabase `.temp`/QA artifacts keluar dari tracking + `.gitignore`; commit `4375d08` |
