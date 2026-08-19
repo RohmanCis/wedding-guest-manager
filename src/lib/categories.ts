@@ -10,15 +10,6 @@ export interface CategoryRow {
 
 type Table = "parties" | "groups";
 
-async function list(table: Table): Promise<CategoryRow[]> {
-  await getDb();
-  const rows =
-    table === "parties"
-      ? await sql<CategoryRow[]>`SELECT * FROM parties ORDER BY name ASC`
-      : await sql<CategoryRow[]>`SELECT * FROM groups ORDER BY name ASC`;
-  return rows.map((r) => ({ ...r }));
-}
-
 async function create(table: Table, name: string): Promise<CategoryRow> {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new ValidationError("name", "Name is required.");
@@ -106,18 +97,25 @@ async function remove(table: Table, id: string): Promise<void> {
   }
 }
 
-async function refCount(table: Table, id: string): Promise<number> {
-  const col = table === "parties" ? sql`party_id` : sql`group_id`;
-  const rows = await sql<{ count: number }[]>`
-    SELECT COUNT(*)::int AS count FROM guests WHERE ${col} = ${id}`;
-  return rows[0].count;
-}
-
 async function listWithUsed(table: Table) {
-  const rows = await list(table);
-  return Promise.all(
-    rows.map(async (r) => ({ ...r, used: await refCount(table, r.id) }))
-  );
+  await getDb();
+  const rows =
+    table === "parties"
+      ? await sql<(CategoryRow & { used: number })[]>`
+          SELECT p.id, p.name, p.created_at, p.updated_at,
+                 COUNT(g.id)::int AS used
+          FROM parties p
+          LEFT JOIN guests g ON g.party_id = p.id
+          GROUP BY p.id
+          ORDER BY p.name ASC`
+      : await sql<(CategoryRow & { used: number })[]>`
+          SELECT gr.id, gr.name, gr.created_at, gr.updated_at,
+                 COUNT(g.id)::int AS used
+          FROM groups gr
+          LEFT JOIN guests g ON g.group_id = gr.id
+          GROUP BY gr.id
+          ORDER BY gr.name ASC`;
+  return rows.map((r) => ({ ...r }));
 }
 
 export const parties = {
