@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 
 function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -24,8 +23,7 @@ function LoginForm() {
       body: JSON.stringify({ username, password })
     });
     if (res.ok) {
-      router.push(params.get("next") || "/");
-      router.refresh();
+      window.location.href = params.get("next") || "/";
     } else {
       setError("Invalid credentials.");
       setLoading(false);
