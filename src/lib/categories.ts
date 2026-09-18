@@ -10,32 +10,28 @@ export interface CategoryRow {
 
 type Table = "parties" | "groups";
 
+/** sql fragment carrying the table identifier — safe interpolation, one place. */
+function tableOf(table: Table) {
+  return sql`${sql(table)}`;
+}
+
 async function create(table: Table, name: string): Promise<CategoryRow> {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new ValidationError("name", "Name is required.");
   await getDb();
-  const dup =
-    table === "parties"
-      ? await sql`SELECT id FROM parties WHERE name = ${trimmed}`
-      : await sql`SELECT id FROM groups WHERE name = ${trimmed}`;
+  const t = tableOf(table);
+  const dup = await sql`SELECT id FROM ${t} WHERE name = ${trimmed}`;
   if (dup.length) throw new ValidationError("name", "Name already exists.");
   const id = cryptoId();
   const now = new Date().toISOString();
-  if (table === "parties") {
-    await sql`INSERT INTO parties (id, name, created_at, updated_at)
-      VALUES (${id}, ${trimmed}, ${now}, ${now})`;
-  } else {
-    await sql`INSERT INTO groups (id, name, created_at, updated_at)
-      VALUES (${id}, ${trimmed}, ${now}, ${now})`;
-  }
+  await sql`INSERT INTO ${t} (id, name, created_at, updated_at)
+    VALUES (${id}, ${trimmed}, ${now}, ${now})`;
   return getById(table, id);
 }
 
 async function getById(table: Table, id: string): Promise<CategoryRow> {
-  const rows =
-    table === "parties"
-      ? await sql<CategoryRow[]>`SELECT * FROM parties WHERE id = ${id}`
-      : await sql<CategoryRow[]>`SELECT * FROM groups WHERE id = ${id}`;
+  const t = tableOf(table);
+  const rows = await sql<CategoryRow[]>`SELECT * FROM ${t} WHERE id = ${id}`;
   if (!rows.length) throw new NotFoundError("Category not found.");
   return { ...rows[0] };
 }
@@ -48,39 +44,24 @@ async function rename(
   const trimmed = (name || "").trim();
   if (!trimmed) throw new ValidationError("name", "Name is required.");
   await getDb();
-  const row =
-    table === "parties"
-      ? await sql`SELECT id FROM parties WHERE id = ${id}`
-      : await sql`SELECT id FROM groups WHERE id = ${id}`;
+  const t = tableOf(table);
+  const row = await sql`SELECT id FROM ${t} WHERE id = ${id}`;
   if (!row.length) throw new NotFoundError("Category not found.");
-  const dup =
-    table === "parties"
-      ? await sql`SELECT id FROM parties WHERE name = ${trimmed} AND id != ${id}`
-      : await sql`SELECT id FROM groups WHERE name = ${trimmed} AND id != ${id}`;
+  const dup = await sql`SELECT id FROM ${t} WHERE name = ${trimmed} AND id != ${id}`;
   if (dup.length) throw new ValidationError("name", "Name already exists.");
   const now = new Date().toISOString();
-  if (table === "parties") {
-    await sql`UPDATE parties SET name = ${trimmed}, updated_at = ${now} WHERE id = ${id}`;
-  } else {
-    await sql`UPDATE groups SET name = ${trimmed}, updated_at = ${now} WHERE id = ${id}`;
-  }
+  await sql`UPDATE ${t} SET name = ${trimmed}, updated_at = ${now} WHERE id = ${id}`;
   return getById(table, id);
 }
 
 async function remove(table: Table, id: string): Promise<void> {
   await getDb();
-  const row =
-    table === "parties"
-      ? await sql`SELECT id FROM parties WHERE id = ${id}`
-      : await sql`SELECT id FROM groups WHERE id = ${id}`;
+  const t = tableOf(table);
+  const row = await sql`SELECT id FROM ${t} WHERE id = ${id}`;
   if (!row.length) throw new NotFoundError("Category not found.");
   // ON DELETE RESTRICT makes this fail if referenced; explicit message:
   try {
-    if (table === "parties") {
-      await sql`DELETE FROM parties WHERE id = ${id}`;
-    } else {
-      await sql`DELETE FROM groups WHERE id = ${id}`;
-    }
+    await sql`DELETE FROM ${t} WHERE id = ${id}`;
   } catch (e) {
     if (
       typeof e === "object" &&
@@ -99,22 +80,13 @@ async function remove(table: Table, id: string): Promise<void> {
 
 async function listWithUsed(table: Table) {
   await getDb();
-  const rows =
-    table === "parties"
-      ? await sql<(CategoryRow & { used: number })[]>`
-          SELECT p.id, p.name, p.created_at, p.updated_at,
-                 COUNT(g.id)::int AS used
-          FROM parties p
-          LEFT JOIN guests g ON g.party_id = p.id
-          GROUP BY p.id
-          ORDER BY p.name ASC`
-      : await sql<(CategoryRow & { used: number })[]>`
-          SELECT gr.id, gr.name, gr.created_at, gr.updated_at,
-                 COUNT(g.id)::int AS used
-          FROM groups gr
-          LEFT JOIN guests g ON g.group_id = gr.id
-          GROUP BY gr.id
-          ORDER BY gr.name ASC`;
+  const rows = await sql<(CategoryRow & { used: number })[]>`
+    SELECT c.id, c.name, c.created_at, c.updated_at,
+           COUNT(g.id)::int AS used
+    FROM ${tableOf(table)} c
+    LEFT JOIN guests g ON ${sql(table === "parties" ? "g.party_id" : "g.group_id")} = c.id
+    GROUP BY c.id
+    ORDER BY c.name ASC`;
   return rows.map((r) => ({ ...r }));
 }
 
