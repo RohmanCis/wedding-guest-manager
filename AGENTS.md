@@ -2,7 +2,7 @@
 
 Wedding Guest Manager — standalone, single-admin wedding guest-list app. One administrator manually enters guests collected from multiple parties.
 
-**Status: MVP complete + deployed live** (incl. approved `/analytics` exception below). 59/59 tests green; typecheck/build clean. Live: https://wedding-guest-manager-pi.vercel.app (Vercel + Supabase Postgres, auto-deploy from GitHub `main`). Local SQLite data (21 guests) migrated 2026-08-19.
+**Status: MVP complete + deployed live** (incl. approved `/analytics` exception below). 65/65 tests green; typecheck/build clean. Live: https://wedding-guest-manager-pi.vercel.app (Vercel + Supabase Postgres, auto-deploy from GitHub `main`). Local SQLite data (21 guests) migrated 2026-08-19.
 
 Source of truth:
 - `PRD-Wedding-Guest-Manager.md` — product spec. Read before non-trivial work. Do not invent product scope.
@@ -54,12 +54,13 @@ A request that changes guest identity, party/group cardinality, required guest f
 | `src/lib/guests.ts` | ALL guest business rules: CRUD, duplicate check, filter semantics, CSV export |
 | `src/lib/guest-filter.ts` | The Guest filter seam: `GuestFilter` type + `filterParams`/`parseFilter` (query-param encode/decode) — pure module, safe for client AND server import; all query-string building goes through it, never hand-rolled |
 | `src/lib/duplicate-jump.ts` | BR-007 duplicate jump decision core: pure `rowReveal()` → missing / page / visible; shared by duplicate highlight + new-guest flash effects |
-| `src/lib/normalize.ts` | `normalizeName` (BR-006), `DuplicateNameError(existingId)` |
+| `src/lib/normalize.ts` | `normalizeName` (BR-006), error classes, and `errorPayload` — the single source of the API error wire contract (409 duplicate + existingId / 404 / 400 + field / 500) |
+| `src/lib/api-error.ts` | Thin `NextResponse` wrapper over `errorPayload` — never hand-builds error JSON |
 | `src/lib/categories.ts` | Party/Group CRUD, rename, safe-delete guard |
 | `src/lib/db.ts` | postgres.js pool (`DATABASE_URL` required, `max:1`, `prepare:false`), schema + seed; `name_norm` UNIQUE |
 | `src/lib/session.ts` | Cookie session; `ADMIN_SESSION_SECRET` fail-closed (empty fallback rejects all sessions) |
 | `src/lib/auth.ts` | Credential check (timing-safe) + shared API `guard()` |
-| `src/lib/client.ts` / `api-error.ts` | Client fetch helpers; `ApiError` carries `existingId` |
+| `src/lib/client.ts` / `api-error.ts` | Client fetch helpers; `ApiError` carries `existingId` typed from the shared `DuplicateNamePayload` contract |
 | `src/lib/party-colors.ts` | Single category identity source: `colorFor`/`colorForGroup`, `iconFor`/`iconForGroup` (named maps + deterministic hash fallback), `CHART_HEX`, `partyHex` |
 | `src/lib/animation-variants.ts` | Shared motion variants + reduced-motion zeroing |
 | `src/middleware.ts` | Route guard |
@@ -74,7 +75,7 @@ A request that changes guest identity, party/group cardinality, required guest f
 | `src/components/charts/` | 14 vendored bklit chart files — do not hand-edit |
 | `src/components/app-shell.tsx` | Dual nav: 72px desktop icon rail + mobile bottom nav (<lg), TopBar; `/login` renders without chrome |
 | `src/hooks/` | `use-guest-list` (guest-list data module: debounce + filter encode + fetch + refresh, race-safe; consumed by guests-view AND use-analytics-data), `use-analytics-data` (derive-only distribution on top), `use-is-mobile`, `use-pagination`, `use-reduced-motion` |
-| `src/lib/*.test.ts`, `src/hooks/*.test.ts` | 59 tests: guests 19 · categories 10 · filter 8 · guest-filter 7 · duplicate-jump 6 · request-gate 4 · auth 5 |
+| `src/lib/*.test.ts`, `src/hooks/*.test.ts` | 65 tests: guests 19 · categories 10 · filter 8 · guest-filter 7 · duplicate-jump 6 · request-gate 4 · api-error 6 · auth 5 |
 | `vitest.setup.ts` | Per-worker Postgres schema `test_w<N>` via `search_path` on `DATABASE_URL`; loads `ADMIN_SESSION_SECRET` from `.env.local` (fixed fallback) |
 | `DEPLOYMENT.md` | Deployment + env vars (incl. required `ADMIN_SESSION_SECRET`) |
 
