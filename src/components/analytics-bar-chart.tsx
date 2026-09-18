@@ -1,29 +1,22 @@
 "use client";
 
-import { partyHex, colorForGroup } from "@/lib/party-colors";
-
-interface Datum {
-  label: string;
-  value: number;
-}
+import type { DistributionDatum } from "@/hooks/use-analytics-data";
 
 /**
  * Horizontal bar distribution for /analytics. Replaces the vendored
  * visx/d3 donut (~150KB) with pure CSS — bars size relative to the max
  * value (biggest = full width), percentage text shows share of total.
- * Colors always resolve through party-colors (mode-aware), never inline.
+ * Colors arrive on each datum via hexFor (mode-aware), never inline.
  */
 export function AnalyticsBarChart({
   data,
   mode
 }: {
-  data: Datum[];
+  data: DistributionDatum[];
   mode: "party" | "group";
 }) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const max = Math.max(1, ...data.map((d) => d.value));
-  const colorOf = (name: string) =>
-    mode === "party" ? partyHex(name) : colorForGroup(name).dot;
 
   return (
     <div className="w-full">
@@ -49,14 +42,14 @@ export function AnalyticsBarChart({
                 </span>
               </div>
               <div className="h-2.5 w-full overflow-hidden rounded-full bg-surface-3">
-                <div
-                  className="analytics-bar-in h-full rounded-full"
-                  style={{
-                    width: `${(d.value / max) * 100}%`,
-                    backgroundColor: colorOf(d.label),
-                    animationDelay: `${i * 40}ms`
-                  }}
-                />
+                  <div
+                className="analytics-bar-in h-full rounded-full"
+                style={{
+                  width: `${(d.value / max) * 100}%`,
+                  backgroundColor: d.color,
+                  animationDelay: `${i * 40}ms`
+                }}
+              />
               </div>
             </li>
           );

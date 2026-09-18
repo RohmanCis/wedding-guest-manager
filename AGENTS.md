@@ -61,7 +61,7 @@ A request that changes guest identity, party/group cardinality, required guest f
 | `src/lib/session.ts` | Cookie session; `ADMIN_SESSION_SECRET` fail-closed (empty fallback rejects all sessions) |
 | `src/lib/auth.ts` | Credential check (timing-safe) + shared API `guard()` |
 | `src/lib/client.ts` / `api-error.ts` | Client fetch helpers; `ApiError` carries `existingId` typed from the shared `DuplicateNamePayload` contract |
-| `src/lib/party-colors.ts` | Single category identity source: `colorFor`/`colorForGroup`, `iconFor`/`iconForGroup` (named maps + deterministic hash fallback), `CHART_HEX`, `partyHex` |
+| `src/lib/party-colors.ts` | Single category identity source: `colorFor`/`colorForGroup`, `iconFor`/`iconForGroup` (named maps + deterministic hash fallback), `CHART_HEX`, `partyHex`, `hexFor(kind, name)` — the one hex rule for both kinds |
 | `src/lib/animation-variants.ts` | Shared motion variants + reduced-motion zeroing |
 | `src/middleware.ts` | Route guard |
 | `src/app/(app)/page.tsx` → `guests-view.tsx` | Guest dashboard: stats, filter toolbar (search debounced 300ms), table with 10-row pagination + "Tampilkan Semua" toggle, modals, BR-007 jump, mobile sticky action bar. Fetch pipeline lives in `useGuestList` — the view never hand-rolls fetch/debounce/race handling |

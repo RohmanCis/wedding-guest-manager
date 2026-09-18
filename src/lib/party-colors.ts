@@ -132,6 +132,11 @@ export function partyHex(name: string): string {
   return CHART_HEX[colorFor(name).dot] ?? "#c9a84c";
 }
 
+/** One hex rule for both category kinds — analytics uses only this. */
+export function hexFor(kind: "party" | "group", name: string): string {
+  return kind === "party" ? partyHex(name) : colorForGroup(name).dot;
+}
+
 /** Party color identity. Groups resolve through colorForGroup instead. */
 export function colorFor(name: string): CategoryColor {
   const hit = partyColors[name];
