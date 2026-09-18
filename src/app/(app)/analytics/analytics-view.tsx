@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -47,16 +47,9 @@ export default function AnalyticsView({
   const [parties, setParties] = useState<Ref[]>(initialParties);
   const [groups, setGroups] = useState<Ref[]>(initialGroups);
 
-  // Debounce the query fed to the hook; input value stays immediate.
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(t);
-  }, [search]);
-
   const { isLoading, error, totalGuests, byParty, byGroup } =
     useAnalyticsData({
-      search: debouncedSearch,
+      search,
       partyId,
       groupId,
       initialGuests

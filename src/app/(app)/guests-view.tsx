@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { apiGet, apiSend, ApiError } from "@/lib/client";
 import { filterParams } from "@/lib/guest-filter";
+import { rowReveal } from "@/lib/duplicate-jump";
+import { useGuestList } from "@/hooks/use-guest-list";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
 import {
@@ -105,14 +107,17 @@ export default function GuestsView({
   initialParties: Ref[];
   initialGroups: Ref[];
 }) {
-  const [guests, setGuests] = useState<Guest[]>(initialGuests);
   const [parties, setParties] = useState<Ref[]>(initialParties);
   const [groups, setGroups] = useState<Ref[]>(initialGroups);
   const [search, setSearch] = useState("");
   const [partyId, setPartyId] = useState("");
   const [groupId, setGroupId] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { guests, isLoading, error, refresh } = useGuestList<Guest>({
+    search,
+    partyId,
+    groupId,
+    initialGuests
+  });
   const [form, setForm] = useState<FormState | null>(null);
   const [formError, setFormError] = useState("");
   const [dupId, setDupId] = useState<string | null>(null);
@@ -159,37 +164,6 @@ export default function GuestsView({
     );
   }, []);
 
-  // Debounce the query fed to fetches; input value stays immediate.
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  const loadGuests = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    const qs = filterParams({ search: debouncedSearch, partyId, groupId });
-    try {
-      const data = await apiGet<{ guests: Guest[] }>(`/api/guests?${qs}`);
-      setGuests(data.guests);
-    } catch (e: any) {
-      setError(e.message || "Failed to load guests.");
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearch, partyId, groupId]);
-
-  // SSR data is already on screen — skip the redundant initial fetch.
-  const skipInitialFetch = useRef(true);
-  useEffect(() => {
-    if (skipInitialFetch.current) {
-      skipInitialFetch.current = false;
-      return;
-    }
-    loadGuests();
-  }, [loadGuests]);
-
   // Reset pagination whenever the active filter set changes.
   useEffect(() => {
     setCurrentPage(1);
@@ -197,41 +171,43 @@ export default function GuestsView({
   }, [search, partyId, groupId]);
 
   // BR-007: scroll the duplicate's existing row into view and highlight it.
-  // If the target is filtered onto another page, jump to that page first so the
-  // row exists on the current view (effect re-runs after page state settles).
+  // "missing" keeps the highlight pending while the reset-filter fetch is in
+  // flight; if the landed list still lacks the target (deleted mid-jump in
+  // another tab), the grace timer bounds the pending state instead of leaking.
   useEffect(() => {
-    if (!highlightId || loading) return;
-    const idx = guests.findIndex((g) => g.id === highlightId);
-    if (idx === -1) {
-      setHighlightId(null);
+    if (!highlightId || isLoading) return;
+    const step = rowReveal(guests, highlightId, {
+      page: safePage,
+      pageSize: PAGE_SIZE,
+      showAll
+    });
+    if (step.type === "page") {
+      setCurrentPage(step.page);
       return;
     }
-    if (
-      !showAll &&
-      (idx < (safePage - 1) * PAGE_SIZE || idx >= safePage * PAGE_SIZE)
-    ) {
-      setCurrentPage(Math.floor(idx / PAGE_SIZE) + 1);
-      return;
+    if (step.type === "missing") {
+      // Grace covers the debounce window: any state transition (e.g. fetch
+      // starts) re-runs this effect and cancels the timer.
+      const t = setTimeout(() => setHighlightId(null), 500);
+      return () => clearTimeout(t);
     }
     const el = document.getElementById(`guest-row-${highlightId}`);
     if (!el) return;
     el.scrollIntoView({ block: "center", behavior: "smooth" });
     const t = setTimeout(() => setHighlightId(null), 2400);
     return () => clearTimeout(t);
-  }, [highlightId, loading, guests, safePage, showAll]);
+  }, [highlightId, isLoading, guests, safePage, showAll]);
 
   // Newly created guest: ensure its flash row is on the visible page.
   useEffect(() => {
-    if (!newGuestId || loading) return;
-    const idx = guests.findIndex((g) => g.id === newGuestId);
-    if (idx === -1) return;
-    if (
-      !showAll &&
-      (idx < (safePage - 1) * PAGE_SIZE || idx >= safePage * PAGE_SIZE)
-    ) {
-      setCurrentPage(Math.floor(idx / PAGE_SIZE) + 1);
-    }
-  }, [newGuestId, loading, guests, safePage, showAll]);
+    if (!newGuestId || isLoading) return;
+    const step = rowReveal(guests, newGuestId, {
+      page: safePage,
+      pageSize: PAGE_SIZE,
+      showAll
+    });
+    if (step.type === "page") setCurrentPage(step.page);
+  }, [newGuestId, isLoading, guests, safePage, showAll]);
 
   const hasFilter = !!(search.trim() || partyId || groupId);
 
@@ -292,7 +268,7 @@ export default function GuestsView({
         createdId = res.guest.id;
       }
       setForm(null);
-      await Promise.all([loadRefs(), loadGuests()]);
+      await Promise.all([loadRefs(), refresh()]);
       if (createdId) setNewGuestId(createdId);
     } catch (err: any) {
       setFormError(err.message);
@@ -309,6 +285,8 @@ export default function GuestsView({
     let g = guests.find((x) => x.id === target);
     if (!g) {
       // Existing record is filtered out — fetch unfiltered to learn its name.
+      // If it is gone there too (deleted in another tab), no jump target:
+      // plain filter reset, no pending highlight.
       try {
         const data = await apiGet<{ guests: Guest[] }>("/api/guests");
         g = data.guests.find((x) => x.id === target);
@@ -321,7 +299,7 @@ export default function GuestsView({
     setPartyId("");
     setGroupId("");
     setSearch(g ? g.name : "");
-    setHighlightId(target);
+    setHighlightId(g ? target : null);
   }
 
   async function confirmDelete() {
@@ -330,7 +308,7 @@ export default function GuestsView({
     try {
       await apiSend(`/api/guests?id=${confirmId}`, "DELETE");
       setConfirmId(null);
-      await Promise.all([loadRefs(), loadGuests()]);
+      await Promise.all([loadRefs(), refresh()]);
     } finally {
       setDeleting(false);
     }
@@ -473,7 +451,7 @@ export default function GuestsView({
           )}
         </div>
 
-        {!loading && guests.length > 0 && (
+        {!isLoading && guests.length > 0 && (
           <p className="text-xs text-muted">
             Menampilkan{" "}
             {showAll
@@ -484,7 +462,7 @@ export default function GuestsView({
 
         {error && <Alert variant="error">{error}</Alert>}
 
-        {loading ? (
+        {isLoading ? (
           <TableContainer>
             <TableSkeleton rows={6} />
           </TableContainer>

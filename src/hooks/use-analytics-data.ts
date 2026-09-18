@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { apiGet } from "@/lib/client";
-import { filterParams } from "@/lib/guest-filter";
+import { useMemo } from "react";
+import { useGuestList } from "./use-guest-list";
 import { partyHex, colorForGroup } from "@/lib/party-colors";
 import type { PieData } from "@/components/charts/pie-context";
 
@@ -25,6 +24,7 @@ function aggregate(
     .map(([label, value]) => ({ label, value }));
 }
 
+/** Distribution derivation on top of the shared guest-list data module. */
 export function useAnalyticsData({
   search,
   partyId,
@@ -36,67 +36,27 @@ export function useAnalyticsData({
   groupId: string;
   initialGuests?: AnalyticsGuest[];
 }) {
-  const [isLoading, setIsLoading] = useState(!initialGuests);
-  const [error, setError] = useState("");
-  const [totalGuests, setTotalGuests] = useState(initialGuests?.length ?? 0);
-  const [byParty, setByParty] = useState<PieData[]>(() =>
+  const { guests, isLoading, error } = useGuestList<AnalyticsGuest>({
+    search,
+    partyId,
+    groupId,
     initialGuests
-      ? aggregate(initialGuests, "party_name").map((d) => ({
-          ...d,
-          color: partyHex(d.label)
-        }))
-      : []
+  });
+  const byParty = useMemo(
+    () =>
+      aggregate(guests, "party_name").map((d) => ({
+        ...d,
+        color: partyHex(d.label)
+      })),
+    [guests]
   );
-  const [byGroup, setByGroup] = useState<PieData[]>(() =>
-    initialGuests
-      ? aggregate(initialGuests, "group_name").map((d) => ({
-          ...d,
-          color: colorForGroup(d.label).dot
-        }))
-      : []
+  const byGroup = useMemo(
+    () =>
+      aggregate(guests, "group_name").map((d) => ({
+        ...d,
+        color: colorForGroup(d.label).dot
+      })),
+    [guests]
   );
-
-  // SSR data is already on screen — skip the redundant initial fetch.
-  const skipInitialFetch = useRef(!!initialGuests);
-
-  useEffect(() => {
-    if (skipInitialFetch.current) {
-      skipInitialFetch.current = false;
-      return;
-    }
-    let active = true;
-    setIsLoading(true);
-    setError("");
-    // Shared with the guest list view through the guest-filter seam.
-    const qs = filterParams({ search, partyId, groupId });
-    apiGet<{ guests: AnalyticsGuest[] }>(`/api/guests?${qs}`)
-      .then((data) => {
-        if (!active) return;
-        setTotalGuests(data.guests.length);
-        setByParty(
-          aggregate(data.guests, "party_name").map((d) => ({
-            ...d,
-            color: partyHex(d.label)
-          }))
-        );
-        setByGroup(
-          aggregate(data.guests, "group_name").map((d) => ({
-            ...d,
-            color: colorForGroup(d.label).dot
-          }))
-        );
-      })
-      .catch((e: unknown) => {
-        if (!active) return;
-        setError(e instanceof Error ? e.message : "Failed to load analytics.");
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [search, partyId, groupId]);
-
-  return { isLoading, error, totalGuests, byParty, byGroup };
+  return { isLoading, error, totalGuests: guests.length, byParty, byGroup };
 }
