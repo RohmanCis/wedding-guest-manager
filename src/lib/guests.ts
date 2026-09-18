@@ -1,10 +1,13 @@
 import { getDb, sql, cryptoId } from "./db";
+import { GuestFilter } from "./guest-filter";
 import {
   normalizeName,
   DuplicateNameError,
   NotFoundError,
   ValidationError
 } from "./normalize";
+
+export type { GuestFilter };
 
 export interface GuestRow {
   id: string;
@@ -20,12 +23,6 @@ export interface GuestRow {
 export interface GuestWithRefs extends GuestRow {
   party_name: string;
   group_name: string;
-}
-
-export interface GuestFilter {
-  search?: string;
-  partyId?: string;
-  groupId?: string;
 }
 
 export interface GuestInput {

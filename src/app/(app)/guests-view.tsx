@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { apiGet, apiSend, ApiError } from "@/lib/client";
+import { filterParams } from "@/lib/guest-filter";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
 import {
@@ -168,10 +169,7 @@ export default function GuestsView({
   const loadGuests = useCallback(async () => {
     setLoading(true);
     setError("");
-    const qs = new URLSearchParams();
-    if (debouncedSearch.trim()) qs.set("search", debouncedSearch.trim());
-    if (partyId) qs.set("partyId", partyId);
-    if (groupId) qs.set("groupId", groupId);
+    const qs = filterParams({ search: debouncedSearch, partyId, groupId });
     try {
       const data = await apiGet<{ guests: Guest[] }>(`/api/guests?${qs}`);
       setGuests(data.guests);
@@ -244,14 +242,11 @@ export default function GuestsView({
   }
 
   function buildCsvUrl(scope: "all" | "filtered") {
-    const qs = new URLSearchParams();
-    qs.set("csv", "1");
-    qs.set("scope", scope);
-    if (scope === "filtered") {
-      if (search.trim()) qs.set("search", search.trim());
-      if (partyId) qs.set("partyId", partyId);
-      if (groupId) qs.set("groupId", groupId);
-    }
+    const filter =
+      scope === "filtered"
+        ? Object.fromEntries(filterParams({ search, partyId, groupId }))
+        : {};
+    const qs = new URLSearchParams({ csv: "1", scope, ...filter });
     return `/api/guests?${qs}`;
   }
 

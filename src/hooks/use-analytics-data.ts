@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { apiGet } from "@/lib/client";
+import { filterParams } from "@/lib/guest-filter";
 import { partyHex, colorForGroup } from "@/lib/party-colors";
 import type { PieData } from "@/components/charts/pie-context";
 
@@ -66,11 +67,8 @@ export function useAnalyticsData({
     let active = true;
     setIsLoading(true);
     setError("");
-    // Same query param semantics as the guest list (src/app/page.tsx).
-    const qs = new URLSearchParams();
-    if (search.trim()) qs.set("search", search.trim());
-    if (partyId) qs.set("partyId", partyId);
-    if (groupId) qs.set("groupId", groupId);
+    // Shared with the guest list view through the guest-filter seam.
+    const qs = filterParams({ search, partyId, groupId });
     apiGet<{ guests: AnalyticsGuest[] }>(`/api/guests?${qs}`)
       .then((data) => {
         if (!active) return;

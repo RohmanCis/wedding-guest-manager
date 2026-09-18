@@ -6,25 +6,16 @@ import {
   updateGuest,
   deleteGuest,
   exportGuestsCsv,
-  GuestFilter,
   GuestInput
 } from "@/lib/guests";
+import { parseFilter } from "@/lib/guest-filter";
 import { errorResponse } from "@/lib/api-error";
-
-function toFilter(req: NextRequest): GuestFilter {
-  const sp = req.nextUrl.searchParams;
-  return {
-    search: sp.get("search") || undefined,
-    partyId: sp.get("partyId") || undefined,
-    groupId: sp.get("groupId") || undefined
-  };
-}
 
 export async function GET(req: NextRequest) {
   const g = guard(req);
   if (g) return g;
   const sp = req.nextUrl.searchParams;
-  const filter = toFilter(req);
+  const filter = parseFilter(sp);
   if (sp.get("csv") === "1") {
     const csv = await exportGuestsCsv(filter);
     const scope = sp.get("scope") === "all" ? "all" : "filtered";

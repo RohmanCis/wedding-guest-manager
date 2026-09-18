@@ -1,0 +1,11 @@
+# CONTEXT.md — Domain Glossary
+
+Domain vocabulary for the Wedding Guest Manager. Naming source for modules, docs, and conversation; update in place when a term sharpens.
+
+- **Guest** — one invitation entry: name, address, exactly one Party, one Group, pax (1–4). Identity = normalized name only (BR-006).
+- **Party** — side of the wedding hosting the guest (Groom, Bride, Groom Family, Bride Family). Category kind `"party"`.
+- **Group** — social circle of the guest (Rekan Kerja, Sekolah, …). Category kind `"group"`.
+- **pax** — integer 1–4, people covered by one guest entry. One number per entry; not household member tracking.
+- **duplicate name** — a second guest whose normalized name (trim → collapse whitespace → lowercase) equals an existing one. Blocked server-side and by DB UNIQUE; the 409 carries `existingId` for the "Lihat di daftar →" jump (BR-007).
+- **Guest filter** — the `search` / `partyId` / `groupId` triple that scopes the guest list, CSV export, and analytics. Encoded to and decoded from query params at one seam: `src/lib/guest-filter.ts`.
+- **distribution** — read-only count of guest entries per Party or Group (not pax-weighted), shown on `/analytics`.
