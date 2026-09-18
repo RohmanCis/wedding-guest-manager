@@ -9,8 +9,9 @@
 > connect, setiap `git push` ke `main` auto-deploy.
 >
 > Pelajaran teknis: SSR page + pool postgres.js `max:1` **wajib sequential await**, bukan
-> `Promise.all` — konkurensi query list (yang fan-out refCount) deadlock 240s+. Sudah fixed
-> di `src/app/(app)/*/page.tsx`; jangan refactor balik ke `Promise.all`.
+> `Promise.all` — deadlock historis 240s+ (didagnosis saat `listWithUsed` masih N+1 fan-out;
+> kini single LEFT JOIN query, tapi rule tetap sebagai asuransi murah untuk pool `max:1`).
+> Fixed di `src/app/(app)/*/page.tsx`; jangan refactor balik ke `Promise.all`.
 
 Goal: use Wedding Guest Manager on your phone, anywhere, with the data safely in the cloud.
 

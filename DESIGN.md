@@ -138,7 +138,7 @@ Dark is the only theme. It is hard-coded on `<html>` with no toggle and no syste
 The palette is a cool dark neutral ladder warmed by a single gold voice, with rose and cream as supporting wedding tones.
 
 ### Primary
-- **Wedding Gold** (#c9a84c): the one action voice — primary buttons, active nav state, focus ring, selected-option checkmarks, loading spinner, link buttons, donut highlight accents. Hover lifts to Lighter Gold (#d4b565).
+- **Wedding Gold** (#c9a84c): the one action voice — primary buttons, active nav state, focus ring, selected-option checkmarks, loading spinner, link buttons, duplicate-jump row highlight. Hover lifts to Lighter Gold (#d4b565).
 - **Warm Cream** (#f0e6d3): high-emphasis text only — page titles, modal titles, stat values. Never a background, never body text.
 
 ### Secondary
@@ -165,7 +165,7 @@ The palette is a cool dark neutral ladder warmed by a single gold voice, with ro
 - **chart-1 Gold** (#c9a84c), **chart-2 Rose** (#c4717a), **chart-3 Steel** (#7a9cc4), **chart-4 Sage** (#7ac49c), **chart-5 Sand** (#c49c7a): the identity ramp for Party/Group color coding — badges, stat-card accent bars, chart slices.
 
 ### The party-colors.ts Identity System
-`src/lib/party-colors.ts` is the single source of category color truth. Named parties (Groom, Bride, Groom Family, Bride Family) map to fixed identities; anything user-created resolves through a deterministic name hash (`h * 31 + charCode`) into an eight-entry FALLBACK palette, so colors are stable forever. Each identity is a `CategoryColor` quadruple: `dot` (solid swatch), `bg` (subtle badge background), `text` (contrast-safe badge text, ≥4.5:1 on its background), `border` (accent). Badge bg/text use literal hexes because Tailwind opacity modifiers can't consume `var()` colors. `CHART_HEX` + `partyHex(name)` resolve the same identities to SVG hex fills for donut slices.
+`src/lib/party-colors.ts` is the single source of category color truth. Named parties (Groom, Bride, Groom Family, Bride Family) map to fixed identities; anything user-created resolves through a deterministic name hash (`h * 31 + charCode`) into an eight-entry FALLBACK palette, so colors are stable forever. Each identity is a `CategoryColor` quadruple: `dot` (solid swatch), `bg` (subtle badge background), `text` (contrast-safe badge text, ≥4.5:1 on its background), `border` (accent). Badge bg/text use literal hexes because Tailwind opacity modifiers can't consume `var()` colors. `CHART_HEX` + `hexFor(kind, name)` resolve the same identities to hex fills for the analytics bar chart.
 
 **The One Voice Rule.** Wedding Gold is the only color that ever means "act" — one primary action per view. Its rarity is the point.
 
@@ -228,7 +228,7 @@ Flat Surface 3 card (12px radius, 80px minimum height, shadow-1 lifting to shado
 ### Category Badge
 Party badges carry the identity: 6px color dot plus subtle identity background with contrast-safe identity text. Group badges resolve through their own `colorForGroup` identity (below). Parties and groups each own a distinct color-coded axis.
 
-**Group identity — `colorForGroup(name)`.** Groups resolve through `colorForGroup(name)` from `src/lib/party-colors.ts`: eight named hex identities (Rekan Kerja `#5B8CDB` through Lainnya `#8A8FA8`), with unmapped names falling back through the same deterministic `h * 31 + charCode` hash into that palette. It returns `{ dot, bg, text }` — `bg` is the dot at 15% alpha, `text` is the dot lightened toward white to hold ≥4.5:1 on the tinted background — applied via inline style, because dynamically built arbitrary-value Tailwind classes are invisible to the JIT scanner. Group dots and badges carry this identity everywhere they render: filter selects, table badges, the category list, and analytics donut slices.
+**Group identity — `colorForGroup(name)`.** Groups resolve through `colorForGroup(name)` from `src/lib/party-colors.ts`: eight named hex identities (Rekan Kerja `#5B8CDB` through Lainnya `#8A8FA8`), with unmapped names falling back through the same deterministic `h * 31 + charCode` hash into that palette. It returns `{ dot, bg, text }` — `bg` is the dot at 15% alpha, `text` is the dot lightened toward white to hold ≥4.5:1 on the tinted background — applied via inline style, because dynamically built arbitrary-value Tailwind classes are invisible to the JIT scanner. Group dots and badges carry this identity everywhere they render: filter selects, table badges, the category list, and analytics bars.
 
 ### App Shell
 Dual navigation, one shell. Desktop (`lg` and up): a 72px fixed left rail on Surface 1 — Fraunces gold "WG" brand mark in a 36px circle, a divider, then icon-only nav (44px targets, 20px icons) with Radix Tooltips on the right side at 300ms delay. Active route is Wedding Gold on a gold-subtle wash, rounded 12px; inactive icons are muted, warming on hover. Logout sits pinned at the bottom.
@@ -238,7 +238,7 @@ Mobile (below `lg`): a fixed bottom navigation bar (56px, Surface 1, top border,
 A sticky 48px top bar on Surface 2 holds the page title and contextual actions. `/login` renders fullscreen without any navigation chrome.
 
 ### Analytics
-Read-only distribution view. Desktop places a flat filter card beside an elevated chart card (`lg:grid-cols-3`); on mobile the filter panel becomes a collapsible accordion above the chart (collapsed by default, AnimatePresence height animation, chevron rotating 180°). Both Party and Group modes render the donut — fixed 280px on desktop, fluid via the chart library's ParentSize inside a 280px cap on mobile — with slice fills from `partyHex` (Party) and `colorForGroup().dot` (Group). The chart panel holds a 320px minimum height so loading and loaded states never shift layout.
+Read-only distribution view. Desktop places a flat filter card beside an elevated chart card (`lg:grid-cols-3`); on mobile the filter panel becomes a collapsible accordion above the chart (collapsed by default, AnimatePresence height animation, chevron rotating 180°). Both Party and Group modes render a horizontal bar list — pure CSS, no chart library: bars scale relative to the max value (biggest = full width), each row shows count + share-of-total percentage right-aligned, and fills arrive on each datum through `hexFor(kind, name)` (never resolved inline). Rows enter with a 40ms staggered grow-in that replays on mode toggle (remount via key); an sr-only table mirrors the data for screen readers. The chart panel holds a 320px minimum height so loading and loaded states never shift layout.
 
 ### Supporting Cast
 Alert (error/success/warning: left border stripe, 12%-alpha semantic wash, matching icon; info: strong border on Surface 3 with a secondary-text icon), Dropdown Menu (Surface 4, 12px radius, shadow-2, danger items in red), Card (elevated Surface 4 / flat Surface 3 / interactive with hover shadow-3), Empty State (dashed border, muted 40px icon, optional action), Loading (gold spinner, shimmer skeletons, role="status" table skeleton).
