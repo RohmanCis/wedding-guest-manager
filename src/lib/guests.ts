@@ -1,5 +1,6 @@
 import { getDb, sql, cryptoId } from "./db";
 import { GuestFilter } from "./guest-filter";
+import type { SortKey } from "./guest-sort";
 import {
   normalizeName,
   DuplicateNameError,
@@ -44,6 +45,19 @@ async function validateRefs(partyId: string, groupId: string) {
 
 export const MAX_PAX = 4;
 
+/**
+ * ORDER BY identifiers — ONLY values from this map ever reach SQL
+ * (postgres.js cannot parameterize identifiers). parseFilter whitelists at
+ * the HTTP boundary; this lookup is the second gate for anything that slips
+ * through anyway. Tiebreak `, g.name ASC` matches the client sortGuests.
+ */
+const SORT_COLUMNS: Record<SortKey, string> = {
+  name: "g.name",
+  pax: "g.pax",
+  party_name: "p.name",
+  group_name: "gr.name"
+};
+
 function normalizePax(pax: GuestInput["pax"]): number {
   if (pax === undefined || pax === null || (pax as unknown) === "") return 1;
   const n = typeof pax === "number" ? pax : Number(pax);
@@ -70,6 +84,11 @@ export async function listGuests(
   const search = filter.search?.trim() || null;
   const partyId = filter.partyId || null;
   const groupId = filter.groupId || null;
+  // Map lookup = whitelist: unknown key → default name asc, never raw SQL.
+  // `sql(col)` is the quoted-identifier fragment; `sql.unsafe` embeds the
+  // direction keyword raw (ternary-controlled: only ever ASC/DESC).
+  const column = (filter.sort && SORT_COLUMNS[filter.sort]) || SORT_COLUMNS.name;
+  const direction = sql.unsafe(filter.dir === "desc" ? "DESC" : "ASC");
   // postgres.js rows are class instances; spread to plain objects for RSC
   // serialization into Client Components.
   const rows = await sql<GuestWithRefs[]>`
@@ -81,7 +100,7 @@ export async function listGuests(
       (${search}::text IS NULL OR g.name ILIKE ${"%" + search + "%"})
       AND (${partyId}::text IS NULL OR g.party_id = ${partyId})
       AND (${groupId}::text IS NULL OR g.group_id = ${groupId})
-    ORDER BY g.name ASC
+    ORDER BY ${sql(column)} ${direction}, g.name ASC
   `;
   return rows.map((r) => ({ ...r }));
 }

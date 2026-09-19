@@ -43,3 +43,35 @@ describe("roundtrip", () => {
     expect(parseFilter(filterParams({ search: "  " }))).toEqual({});
   });
 });
+
+describe("sort/dir (Task 2)", () => {
+  it("encodes sort and dir when present, omits them when absent", () => {
+    const qs = filterParams({ sort: "pax", dir: "desc" });
+    expect(qs.get("sort")).toBe("pax");
+    expect(qs.get("dir")).toBe("desc");
+    expect(filterParams({}).has("sort")).toBe(false);
+    expect(filterParams({}).has("dir")).toBe(false);
+  });
+
+  it("parseFilter accepts whitelisted sort/dir and rejects anything else", () => {
+    expect(parseFilter(new URLSearchParams("sort=pax&dir=desc"))).toEqual({
+      sort: "pax",
+      dir: "desc"
+    });
+    // Trust boundary: raw params never survive the parse.
+    expect(
+      parseFilter(new URLSearchParams("sort=x; DROP TABLE guests;--&dir=sideways"))
+    ).toEqual({});
+  });
+
+  it("roundtrips sort/dir alongside the filter", () => {
+    const filter = {
+      search: "budi",
+      partyId: "p1",
+      groupId: "g1",
+      sort: "party_name" as const,
+      dir: "asc" as const
+    };
+    expect(parseFilter(filterParams(filter))).toEqual(filter);
+  });
+});

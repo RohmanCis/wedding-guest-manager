@@ -28,6 +28,55 @@ Standar eksekusi task: spesifik, bersih, tidak ada perubahan di luar scope. Sele
 
 ---
 
+## Task 2 — Sort Tabel Tamu (kolom Nama/Jumlah/Party/Group)
+
+**Tujuan:** Klik judul kolom untuk mengurutkan tabel tamu; klik lagi membalik arah. Default `name asc` — identik dengan `ORDER BY g.name ASC` server saat ini, tampilan awal tidak berubah.
+
+**Keputusan produk (user, 2026-09-19):**
+- Sort kolom: `Nama`, `Jumlah (pax)`, `Party`, `Group`. `No.` dan `Alamat` tidak di-sort.
+- Sort by Party & Group eksplisit diminta (fitur inti task ini).
+- **Grouped/sectioned view (header seksi collapsible) DITUNDA — bukan scope.** Hasil crosscheck 3 agent (explorer/data, oracle/arsitektur, designer/UX, 2026-09-19): rusak `guests.slice` pagination (seksi terpotong antar halaman), rusak `rowReveal` index math (BR-007 tested behavior — invariant load-bearing), ±150 LOC refactor. Manfaat visual ~80% sudah didapat gratis dari color-run badge saat sort. Bangun hanya jika tamu > ~500 atau permintaan eksplisit.
+- Arsitektur: **hybrid** — sort UI client-side (instant, tanpa refetch, array full sudah ada di `guests`), CSV export sort-aware (export ikut urutan layar) via param `sort`/`dir` di seam `guest-filter`.
+
+**Rancangan (terverifikasi crosscheck vs kode, 2026-09-19):**
+1. **`src/lib/guest-sort.ts` (baru)** — pure, ikut pola `guest-filter.ts`:
+   - `SortKey = "name" | "pax" | "party_name" | "group_name"`, `SortState { key, dir }`, `sortGuests(rows, sort)`.
+   - `pax` compare NUMERIC (`a.pax - b.pax`, bukan string — "10" vs "2"); string via `localeCompare(..., "id")`.
+   - Tiebreak sekunder `name` (deterministik, aman untuk `rowReveal`).
+   - Test file `guest-sort.test.ts` colocated: pax numeric, tie stability, empty array, arah desc, locale.
+2. **`src/app/(app)/guests-view.tsx`:**
+   - State `const [sort, setSort] = useState<SortState>({ key: "name", dir: "asc" })` + `toggleSort(k)`: key sama → flip dir; key baru → asc.
+   - `const sorted = useMemo(() => sortGuests(guests, sort), [guests, sort])`.
+   - **TRAP — feed `sorted` (bukan `guests`) ke SEMUA konsumen index-based:** `pageGuests` slice (sort SEBELUM slice), kedua efek `rowReveal` (highlight duplikat + flash guest baru), penomoran `No.`, teks hitung "Menampilkan X–Y".
+   - Tambah `sort` ke deps efek reset-pagination (ganti sort → kembali halaman 1, konsisten dengan perubahan filter).
+   - Header jadi tombol full-cell dalam `TableHead`: `aria-sort` ascending/ddescending, ikon `ChevronsUpDown` idle (desktop: muncul saat hover/focus; mobile: SELALU terlihat low-opacity — tidak ada hover di touch), panah aktif warna accent. Hit area ≥44px (padding trick `-m-2 p-2`). Kolom Party/Group tanpa width class — pastikan ikon tidak menggeser lebar kolom.
+   - Polish opsional (5 baris `cn()` di row map): garis pemisah atas saat nilai kolom sort berubah (border-t) — menangkal tabrakan warna fallback antar kategori custom.
+3. **CSV konsisten (jalur oracle, bentuk minimal):**
+   - `guest-filter.ts`: extend `GuestFilter` dengan `sort`/`dir` opsional; `filterParams` set jika ada; `parseFilter` whitelist validasi (`SORT_KEYS` enum — trust boundary, jangan pernah interpolate mentah ke SQL).
+   - `guests.ts` `listGuests`: map `SORT_COLUMNS: Record<SortKey, string>` (`name→g.name`, `pax→g.pax`, `party_name→p.name`, `group_name→gr.name`) — hanya identifier hasil map yang masuk `ORDER BY` (postgres.js tidak bisa parameterize identifier), tiebreak `, g.name ASC`.
+   - `use-guest-list.ts`: terima `sort`/`dir`, masukkan ke `filterParams` + deps `refresh`.
+   - `buildCsvUrl("filtered")` spread `sort`/`dir` → export ikut urutan layar. `exportGuestsCsv` otomatis warisan via `listGuests`.
+   - Catatan staleness (LOW, terima tanpa mitigasi): rename kategori di halaman lain → nama lama di list ter-mount sampai refresh berikut; sembuh sendiri. Jangan bangun polling.
+4. **Tidak disentuh:** `route.ts`, `db.ts`, `categories.ts`, primitif `ui/`, pagination hook.
+
+**Langkah:**
+1. `guest-sort.ts` + test → `npm test` hijau dulu (pure, tanpa UI).
+2. Wire `guests-view.tsx` (state + memo + header UI + efek) → verifikasi manual: sort + filter + pagination + jump duplikat (BR-007) + flash guest baru + `Tampilkan Semua`.
+3. Wire jalur CSV (`guest-filter` + `guests.ts` + `use-guest-list`) → verifikasi export filtered mengikuti sort.
+4. `npm run typecheck` + `npm test` + `npm run build` semua hijau.
+5. Update Status Log baris ini.
+
+**Batasan:**
+- Dark theme only; primitif `src/components/ui/` only; warna via `party-colors.ts` (tidak ada hex inline).
+- Jangan refactor `rowReveal`/`duplicate-jump.ts` — cukup beri array ter-sort.
+- Jangan ubah jumlah SSR await (pool `max:1` — sequential).
+- Multi-column sort = YAGNI. URL-sync sort = YAGNI.
+- 65 test lama tetap hijau + test baru sort.
+
+**Selesai:** Header 4 kolom klik-urut, arah toggle, default name asc (zero visual diff awal), BR-007 jump tetap benar saat sort aktif, CSV filtered mengikuti sort, semua command green.
+
+---
+
 ## Status Log
 
 | Task | Status | Catatan |
@@ -49,3 +98,4 @@ Standar eksekusi task: spesifik, bersih, tidak ada perubahan di luar scope. Sele
 | Arsitektur C — Error payload contract | done | `errorPayload(e) → {status, body}` pure di `normalize.ts` = single source wire contract (409+existingId / 404 / 400+field / 500); `api-error.ts` jadi thin NextResponse wrapper; `ApiError.existingId` typed via `DuplicateNamePayload`; 6 test baru (4 mapping + 2 client unwrap via stubbed fetch); zero behavior change — status/body/field identik; rename field kini compile error, bukan silent break BR-007; typecheck + 65/65 + build green; commit `ddd9446` |
 | Arsitektur D — Category table fragment | done | 8× `table === "parties" ? … : …` di `categories.ts` collapse ke `tableOf(table)` sql-fragment (postgres 3.4.9 — fragment identifier API diverifikasi via probe script dulu); `listWithUsed` jadi satu query JOIN parametrik (join key via fragment); interface `parties`/`groups` tak berubah; 65/65 tetap hijau (10 test categories sebagai safety net); typecheck + build green; commit `3ed87d5` |
 | Arsitektur E — Distribution shape | done | `DistributionDatum {label, value, color}` dimiliki `use-analytics-data` (bukan pinjam `PieData` dari pie-chart vendored yang sudah mati); `hexFor(kind, name)` satu interface hex untuk party+group (ganti asimetri `partyHex` vs `colorForGroup().dot`); `AnalyticsBarChart` menerima color di datum, bukan resolve sendiri; zero import live dari `src/components/charts/` di luar vendored dir; typecheck + 65/65 + build green |
+| 2 — Sort tabel tamu | done | `guest-sort.ts` pure (pax numeric, `localeCompare "id"`, tiebreak name asc deterministik, 10 test); header 4 kolom klik-urut (`SortHeader`: aria-sort di `<th>`, ChevronsUpDown idle hover/focus desktop + selalu low-opacity <lg, panah aktif accent, hit ≥44px `-m-3 p-3 min-h-11`, ikon space reserved agar lebar kolom stabil); SEMUA konsumen index (`pageGuests` slice, kedua efek `rowReveal` BR-007/flash, penomoran No.) kini baca `sorted` (useMemo) — default `{name,asc}` zero visual diff vs SSR; `sort` masuk deps efek reset-pagination; polish separator `border-t` saat nilai kolom party/group berubah; CSV: `GuestFilter` +`sort`/`dir` (parseFilter whitelist `SORT_KEYS` — trust boundary), `listGuests` ORDER BY via `SORT_COLUMNS` map — hanya identifier ter-map masuk SQL (`sql(col)` quoted fragment + `sql.unsafe(dir)` keyword; bug awal `sql("g.name ASC")` = identifier ter-quote → "column does not exist", fixed), `buildCsvUrl("filtered")` bawa sort/dir, scope "all" tetap default; `use-guest-list` terima sort/dir opsional (guests-view TIDAK memakainya — sort murni client-side: 0 refetch saat klik sort, terverifikasi via network log); verifikasi manual 2 fase: prod 311 tamu read-only (default order identik, sort×filter, pagination reset, showAll 311 baris + numbering + 4 separator group, CSV filtered 279 baris pax desc non-increasing + tie name asc, BR-007 duplicate jump dengan sort aktif — page-branch ke halaman 22 + highlight + grace timer, zero mutation) + schema terisolasi (flash guest baru pax-4 di posisi 1 saat sort pax desc, animate-row-flash tertangkap timeline); typecheck + 82/82 (65 lama + 17 baru: 10 sort + 3 filter + 4 ORDER BY) + build green |

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiGet } from "@/lib/client";
 import { filterParams } from "@/lib/guest-filter";
+import type { SortKey, SortDir } from "@/lib/guest-sort";
 
 const DEBOUNCE_MS = 300;
 
@@ -32,11 +33,17 @@ export function useGuestList<T extends { id: string }>({
   search,
   partyId,
   groupId,
+  sort,
+  dir,
   initialGuests
 }: {
   search: string;
   partyId: string;
   groupId: string;
+  /** Optional server-side ordering — seam parity with the CSV export URL.
+   *  The guest dashboard sorts client-side (instant) and leaves these unset. */
+  sort?: SortKey;
+  dir?: SortDir;
   initialGuests?: T[];
 }) {
   const [guests, setGuests] = useState<T[]>(initialGuests ?? []);
@@ -60,7 +67,13 @@ export function useGuestList<T extends { id: string }>({
     const req = gate.issue();
     setIsLoading(true);
     setError("");
-    const qs = filterParams({ search: debouncedSearch, partyId, groupId });
+    const qs = filterParams({
+      search: debouncedSearch,
+      partyId,
+      groupId,
+      sort,
+      dir
+    });
     try {
       const data = await apiGet<{ guests: T[] }>(`/api/guests?${qs}`);
       if (!gate.accept(req)) return;
@@ -71,7 +84,7 @@ export function useGuestList<T extends { id: string }>({
     } finally {
       if (gate.accept(req)) setIsLoading(false);
     }
-  }, [debouncedSearch, partyId, groupId]);
+  }, [debouncedSearch, partyId, groupId, sort, dir]);
 
   // SSR data is already on screen — skip the redundant initial fetch.
   const skipInitialFetch = useRef(!!initialGuests);

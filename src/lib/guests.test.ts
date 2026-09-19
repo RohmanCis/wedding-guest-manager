@@ -14,6 +14,7 @@ import {
   NotFoundError
 } from "@/lib/normalize";
 import { parties, groups } from "@/lib/categories";
+import type { SortKey } from "@/lib/guest-sort";
 
 beforeEach(async () => {
   await resetDb();
@@ -136,6 +137,55 @@ describe("guest create/update/delete", () => {
     expect(await exportGuestsCsv({ search: "zzz" })).toBe(
       "Name,Address,Party,Group,Pax"
     );
+  });
+});
+
+describe("list sort (ORDER BY — Task 2)", () => {
+  it("sorts pax desc numerically with the name-asc tiebreak", async () => {
+    const { p, g } = await refs();
+    await createGuest({ name: "Ani", address: "A", partyId: p.id, groupId: g.id, pax: 1 });
+    await createGuest({ name: "Citra", address: "A", partyId: p.id, groupId: g.id, pax: 3 });
+    await createGuest({ name: "Budi", address: "A", partyId: p.id, groupId: g.id, pax: 3 });
+    const rows = await listGuests({ sort: "pax", dir: "desc" });
+    expect(rows.map((r) => [r.name, r.pax])).toEqual([
+      ["Budi", 3],
+      ["Citra", 3],
+      ["Ani", 1]
+    ]);
+  });
+
+  it("sorts by party_name ascending", async () => {
+    const gs = await groups.list();
+    const ps = await parties.list(); // seeded: Bride, Bride Family, Groom, Groom Family
+    await createGuest({ name: "Zaki", address: "A", partyId: ps[1].id, groupId: gs[0].id });
+    await createGuest({ name: "Ani", address: "A", partyId: ps[0].id, groupId: gs[0].id });
+    const rows = await listGuests({ sort: "party_name", dir: "asc" });
+    expect(rows.map((r) => [r.name, r.party_name])).toEqual([
+      ["Ani", ps[0].name],
+      ["Zaki", ps[1].name]
+    ]);
+  });
+
+  it("falls back to name asc for sort keys outside SORT_COLUMNS (no raw SQL)", async () => {
+    const { p, g } = await refs();
+    await createGuest({ name: "Zaki", address: "A", partyId: p.id, groupId: g.id });
+    await createGuest({ name: "Ani", address: "A", partyId: p.id, groupId: g.id });
+    let evil: string = "g.name; DROP TABLE guests;--";
+    // Unknown key → default column g.name, dir still applies (desc here).
+    const rows = await listGuests({ sort: evil as SortKey, dir: "desc" });
+    expect(rows.map((r) => r.name)).toEqual(["Zaki", "Ani"]);
+    // the table survived the crafted key
+    expect((await listGuests()).length).toBe(2);
+  });
+
+  it("exports the filtered CSV in the requested sort order", async () => {
+    const { p, g } = await refs();
+    await createGuest({ name: "Ani", address: "A", partyId: p.id, groupId: g.id, pax: 1 });
+    await createGuest({ name: "Budi", address: "B", partyId: p.id, groupId: g.id, pax: 4 });
+    const csv = await exportGuestsCsv({ sort: "pax", dir: "desc" });
+    const data = csv.split("\r\n").slice(1);
+    expect(data[0].startsWith("Budi,")).toBe(true);
+    expect(data[1].startsWith("Ani,")).toBe(true);
   });
 });
 

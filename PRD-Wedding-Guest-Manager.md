@@ -303,6 +303,8 @@ The main guest management screen must display a structured guest table/list cont
 
 The list must support pagination or another bounded rendering strategy when the dataset grows.
 
+The list must support column sorting per FR-016.
+
 ### FR-003 Add Guest
 
 The administrator can create a guest with:
@@ -387,7 +389,7 @@ The administrator can export all guests as CSV.
 
 The administrator can export the current filtered result as CSV.
 
-Export must preserve the active query/filter semantics.
+Export must preserve the active query/filter semantics, and the filtered export must follow the active sort order (FR-016).
 
 ### FR-014 Empty States
 
@@ -401,6 +403,20 @@ Provide clear empty states for:
 ### FR-015 Validation
 
 Validation errors must be clear, local to the relevant field when practical, and must not expose raw database errors.
+
+### FR-016 Table Sort
+
+Added by explicit product decision (user, 2026-09-19).
+
+The administrator can sort the guest table by clicking the column headers: `Nama`, `Jumlah (pax)`, `Party`, `Group`. `No.` and `Alamat` are not sortable.
+
+- Clicking a header sorts ascending; clicking again reverses direction. New key → ascending.
+- Default order is `name asc` — identical to the previous fixed server order; the initial view is unchanged.
+- Sorting is instant and client-side (no refetch); it must stay consistent with pagination, duplicate jump (BR-007), and new-guest flash.
+- `pax` compares numerically; string columns compare with the `id` locale; ties break on name ascending.
+- The filtered CSV export follows the on-screen sort order (hybrid: client sort, server-side ORDER BY for export only).
+- Changing sort resets pagination to page 1.
+- Out of scope: grouped/sectioned view, multi-column sort, URL-synced sort state.
 
 ---
 
@@ -562,6 +578,15 @@ wedding-guests-filtered-YYYY-MM-DD.csv
 - Group filter works.
 - Search + Party + Group can be combined.
 - Reset clears all active filters.
+
+### Sorting
+
+- All four columns (Nama, Jumlah, Party, Group) sort on click; a second click reverses direction.
+- Initial view is identical to the previous fixed `name asc` order.
+- `pax` sorts numerically (2 before 10), ties break on name ascending.
+- Sorting never refetches and never breaks duplicate jump, new-guest flash, pagination numbering, or "Tampilkan Semua".
+- Changing sort or filters returns to page 1.
+- Filtered CSV export rows land in the on-screen sort order.
 
 ### Category Management
 

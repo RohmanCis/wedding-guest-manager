@@ -2,12 +2,12 @@
 
 Wedding Guest Manager — standalone, single-admin wedding guest-list app. One administrator manually enters guests collected from multiple parties.
 
-**Status: MVP complete + deployed live** (incl. approved `/analytics` exception below). 65/65 tests green; typecheck/build clean. Live: https://wedding-guest-manager-pi.vercel.app (Vercel + Supabase Postgres, auto-deploy from GitHub `main`). Local SQLite data (21 guests) migrated 2026-08-19.
+**Status: MVP complete + deployed live** (incl. approved `/analytics` exception below). 82/82 tests green; typecheck/build clean. Live: https://wedding-guest-manager-pi.vercel.app (Vercel + Supabase Postgres, auto-deploy from GitHub `main`). Local SQLite data (21 guests) migrated 2026-08-19.
 
 Source of truth:
 - `PRD-Wedding-Guest-Manager.md` — product spec. Read before non-trivial work. Do not invent product scope.
 - `DESIGN.md` (+ `.impeccable/design.json`) — design system. Read before UI work; keep in sync when the system changes.
-- `CONTEXT.md` — domain glossary (Guest, Party, Group, pax, duplicate name, Guest filter, distribution). Keep in sync when a term sharpens.
+- `CONTEXT.md` — domain glossary (Guest, Party, Group, pax, duplicate name, Guest filter, sort state, distribution). Keep in sync when a term sharpens.
 - `Task.md` — tracked task queue (cleanup, audits, refactors) with per-task scope, constraints, and status log. Read at session start; execute one task at a time; update its Status Log when done. Do not start a listed task without following its written scope.
 
 ## Commands
@@ -29,7 +29,7 @@ All three must pass before a task is done.
 
 ## Product boundary
 
-Implemented and complete: single-admin auth · guest CRUD (`name`/`address`/`party_id`/`group_id`/`pax`, exactly one party + one group per guest) · name search · party/group/combined filters + reset · duplicate prevention by normalized name · party & group management · CSV export all/filtered (columns `Name,Address,Party,Group,Pax`) · `pax` field: integer 1–4 people per entry, default 1 (explicit user decision 2026-08-19; not household tracking — one number per guest entry, no member names) · `/analytics` read-only horizontal bar distribution (explicit user decision 2026-08-18 — the ONLY analytics allowed; counts entries, NOT pax-weighted; donut replaced by bar per user decision 2026-08-19).
+Implemented and complete: single-admin auth · guest CRUD (`name`/`address`/`party_id`/`group_id`/`pax`, exactly one party + one group per guest) · name search · party/group/combined filters + reset · guest-table sort by Nama/Jumlah/Party/Group, click-toggle direction, default `name asc`, instant client-side, filtered CSV export follows the screen sort (explicit user decision 2026-09-19; no grouped/sectioned view, no multi-column sort, no URL-sync — all explicitly deferred) · duplicate prevention by normalized name · party & group management · CSV export all/filtered (columns `Name,Address,Party,Group,Pax`) · `pax` field: integer 1–4 people per entry, default 1 (explicit user decision 2026-08-19; not household tracking — one number per guest entry, no member names) · `/analytics` read-only horizontal bar distribution (explicit user decision 2026-08-18 — the ONLY analytics allowed; counts entries, NOT pax-weighted; donut replaced by bar per user decision 2026-08-19).
 
 Never add, even under another name, unless the user makes an explicit product decision first: multi-user accounts · invitation status · RSVP · attendance/check-in · household member tracking (names within one entry) · QR codes · WhatsApp/email/SMS integrations · CSV/Excel import · relationship/free-text relation fields · public guest-facing portal · analytics beyond `/analytics` (no trends, no pax/RSVP charts, no analytics export) · notifications · payments/budgeting · invitation-website features.
 
@@ -39,7 +39,7 @@ A request that changes guest identity, party/group cardinality, required guest f
 
 - Duplicate identity = normalized name ONLY (trim → collapse internal whitespace → case-insensitive; `normalizeName`, BR-006). Address/party/group never affect it. No fuzzy/phonetic matching.
 - Enforcement is server-side AND database-backed: app pre-check + `guests.name_norm` UNIQUE (TOCTOU race → `DuplicateNameError`). Duplicate 409 response carries `existingId`; UI surfaces "Lihat di daftar →" (BR-007). Guest may keep its own name on edit (BR-008).
-- All guest business rules live in `src/lib/guests.ts`, server-authoritative. CSV export reuses `listGuests()` filter semantics — never duplicate filter logic. Columns `Name,Address,Party,Group,Pax`, UTF-8, filenames `wedding-guests-{all|filtered}-YYYY-MM-DD.csv`.
+- All guest business rules live in `src/lib/guests.ts`, server-authoritative. CSV export reuses `listGuests()` filter + sort semantics — never duplicate that logic. Columns `Name,Address,Party,Group,Pax`, UTF-8, filenames `wedding-guests-{all|filtered}-YYYY-MM-DD.csv`. `listGuests` ORDER BY only ever receives identifiers from the `SORT_COLUMNS` map (whitelisted twice: `parseFilter` rejects unknown `sort` keys at the HTTP boundary, the map lookup defaults to `g.name`) — a raw sort param must never reach SQL.
 - Category delete blocked while `used > 0`; never silently reassign or cascade-delete guests. Guest delete requires explicit confirmation. Create/update atomic.
 - Auth: cookie session via `src/lib/session.ts`. `ADMIN_SESSION_SECRET` must be set in production (Vercel env) — if missing, `SESSION_SECRET` falls back to `""` and `validSession()` returns `false` for everything: app fails CLOSED (login sets cookie but every route redirects to `/login`). Never throw at module load in `src/lib/session.ts` — it crashes Edge middleware silently and hangs every request (fixed 2026-08-19). Login cookie is `secure: true`, `maxAge` 7d. `src/middleware.ts` guards everything except `/login`, `/api/auth/*`, static assets, `icon.svg`. Login success must navigate via `window.location.href` (full load), NOT `router.push` + `router.refresh` — SPA/RSC nav races the browser's cookie commit, middleware sees no cookie and bounces back to `/login` (fixed 2026-08-19).
 - SSR pages (`/`, `/categories`, `/analytics`) read `lib/` directly and pass `initial*` props to `*-view.tsx` client components, which skip the initial fetch. `listGuests()` must spread rows to plain objects — postgres.js row class instances are not RSC-serializable.
@@ -51,8 +51,9 @@ A request that changes guest identity, party/group cardinality, required guest f
 
 | Path | Role |
 |---|---|
-| `src/lib/guests.ts` | ALL guest business rules: CRUD, duplicate check, filter semantics, CSV export |
-| `src/lib/guest-filter.ts` | The Guest filter seam: `GuestFilter` type + `filterParams`/`parseFilter` (query-param encode/decode) — pure module, safe for client AND server import; all query-string building goes through it, never hand-rolled |
+| `src/lib/guests.ts` | ALL guest business rules: CRUD, duplicate check, filter semantics, sort-aware CSV export |
+| `src/lib/guest-filter.ts` | The Guest filter seam: `GuestFilter` type (+ optional `sort`/`dir`, whitelisted in `parseFilter`) + `filterParams`/`parseFilter` (query-param encode/decode) — pure module, safe for client AND server import; all query-string building goes through it, never hand-rolled |
+| `src/lib/guest-sort.ts` | Pure table sort: `SortKey`/`SortState`/`sortGuests` (pax numeric, `id` locale, name-asc tiebreak mirroring the SQL `, g.name ASC`) + `SORT_KEYS` whitelist; default `{name, asc}` = server order, zero visual diff |
 | `src/lib/duplicate-jump.ts` | BR-007 duplicate jump decision core: pure `rowReveal()` → missing / page / visible; shared by duplicate highlight + new-guest flash effects |
 | `src/lib/normalize.ts` | `normalizeName` (BR-006), error classes, and `errorPayload` — the single source of the API error wire contract (409 duplicate + existingId / 404 / 400 + field / 500) |
 | `src/lib/api-error.ts` | Thin `NextResponse` wrapper over `errorPayload` — never hand-builds error JSON |
@@ -64,7 +65,7 @@ A request that changes guest identity, party/group cardinality, required guest f
 | `src/lib/party-colors.ts` | Single category identity source: `colorFor`/`colorForGroup`, `iconFor`/`iconForGroup` (named maps + deterministic hash fallback), `CHART_HEX`, `partyHex`, `hexFor(kind, name)` — the one hex rule for both kinds |
 | `src/lib/animation-variants.ts` | Shared motion variants + reduced-motion zeroing |
 | `src/middleware.ts` | Route guard |
-| `src/app/(app)/page.tsx` → `guests-view.tsx` | Guest dashboard: stats, filter toolbar (search debounced 300ms), table with 10-row pagination + "Tampilkan Semua" toggle, modals, BR-007 jump, mobile sticky action bar. Fetch pipeline lives in `useGuestList` — the view never hand-rolls fetch/debounce/race handling |
+| `src/app/(app)/page.tsx` → `guests-view.tsx` | Guest dashboard: stats, filter toolbar (search debounced 300ms), sortable table (client-side, default `name asc`) with 10-row pagination + "Tampilkan Semua" toggle, modals, BR-007 jump, mobile sticky action bar. Fetch pipeline lives in `useGuestList` — the view never hand-rolls fetch/debounce/race handling. Every index-based consumer reads the `sorted` array, never raw `guests` |
 | `src/app/(app)/categories/*` | Category management (server page → client view) |
 | `src/app/(app)/analytics/*` | Analytics horizontal bar chart, Party/Group modes (server page → client view, read-only) |
 | `src/app/login/page.tsx` | Login; after success does a FULL page navigation (`window.location.href`), never `router.push`/`refresh` |
@@ -74,8 +75,8 @@ A request that changes guest identity, party/group cardinality, required guest f
 | `src/components/ui/` | 13 shared primitives (incl. pagination) — consume, never restyle locally |
 | `src/components/charts/` | 14 vendored bklit chart files — do not hand-edit |
 | `src/components/app-shell.tsx` | Dual nav: 72px desktop icon rail + mobile bottom nav (<lg), TopBar; `/login` renders without chrome |
-| `src/hooks/` | `use-guest-list` (guest-list data module: debounce + filter encode + fetch + refresh, race-safe; consumed by guests-view AND use-analytics-data), `use-analytics-data` (derive-only distribution on top), `use-is-mobile`, `use-pagination`, `use-reduced-motion` |
-| `src/lib/*.test.ts`, `src/hooks/*.test.ts` | 65 tests: guests 19 · categories 10 · filter 8 · guest-filter 7 · duplicate-jump 6 · request-gate 4 · api-error 6 · auth 5 |
+| `src/hooks/` | `use-guest-list` (guest-list data module: debounce + filter encode + fetch + refresh, race-safe, optional `sort`/`dir` passthrough for the CSV seam — guests-view deliberately sorts client-side instead; consumed by guests-view AND use-analytics-data), `use-analytics-data` (derive-only distribution on top), `use-is-mobile`, `use-pagination`, `use-reduced-motion` |
+| `src/lib/*.test.ts`, `src/hooks/*.test.ts` | 82 tests: guests 23 · categories 10 · filter 8 · guest-filter 10 · guest-sort 10 · duplicate-jump 6 · request-gate 4 · api-error 6 · auth 5 |
 | `vitest.setup.ts` | Per-worker Postgres schema `test_w<N>` via `search_path` on `DATABASE_URL`; loads `ADMIN_SESSION_SECRET` from `.env.local` (fixed fallback) |
 | `DEPLOYMENT.md` | Deployment + env vars (incl. required `ADMIN_SESSION_SECRET`) |
 

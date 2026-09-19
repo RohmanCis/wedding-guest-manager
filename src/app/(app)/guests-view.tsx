@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { apiGet, apiSend, ApiError } from "@/lib/client";
 import { filterParams } from "@/lib/guest-filter";
 import { rowReveal } from "@/lib/duplicate-jump";
+import {
+  sortGuests,
+  DEFAULT_SORT,
+  type SortKey,
+  type SortState
+} from "@/lib/guest-sort";
 import { useGuestList } from "@/hooks/use-guest-list";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
@@ -45,6 +51,8 @@ import {
   Search,
   Plus,
   ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
   RotateCcw,
   Pencil,
   Trash2,
@@ -98,6 +106,59 @@ const EMPTY: FormState = {
 const ALL = "__all__";
 const PAX_OPTIONS = [1, 2, 3, 4];
 
+/** Sortable table header: full-cell button (≥44px hit area via -m-3 p-3),
+ * aria-sort on the <th>. Idle icon hidden until hover/focus on pointer
+ * devices, always faintly visible below lg (no hover on touch). */
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  onToggle,
+  className,
+  align = "start"
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: SortState;
+  onToggle: (key: SortKey) => void;
+  className?: string;
+  align?: "start" | "center";
+}) {
+  const active = sort.key === sortKey;
+  const Icon = active
+    ? sort.dir === "asc"
+      ? ChevronUp
+      : ChevronDown
+    : ChevronsUpDown;
+  return (
+    <TableHead
+      className={cn("group/head", className)}
+      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onToggle(sortKey)}
+        className={cn(
+          "-m-3 h-auto min-h-11 w-full gap-1.5 p-3 text-xs font-medium uppercase tracking-wide",
+          align === "center" ? "justify-center" : "justify-start"
+        )}
+      >
+        {label}
+        <Icon
+          aria-hidden="true"
+          className={cn(
+            "shrink-0 transition-opacity",
+            active
+              ? "text-accent-gold"
+              : "text-muted opacity-0 group-hover/head:opacity-100 group-focus-within/head:opacity-100 max-lg:opacity-40"
+          )}
+        />
+      </Button>
+    </TableHead>
+  );
+}
+
 export default function GuestsView({
   initialGuests,
   initialParties,
@@ -129,6 +190,11 @@ export default function GuestsView({
   const isMobile = useIsMobile();
   const [currentPage, setCurrentPage] = useState(1);
   const [showAll, setShowAll] = useState(false);
+  // Hybrid sort: client-side instant reorder (no refetch — the full array is
+  // already in `guests`); default {name, asc} mirrors the server default so
+  // the first paint is byte-identical to the SSR order.
+  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
+  const sorted = useMemo(() => sortGuests(guests, sort), [guests, sort]);
   // First client paint shows SSR data without enter animations (LCP un-gate);
   // later renders (filter changes, new guest) animate rows in via CSS.
   const [mounted, setMounted] = useState(false);
@@ -144,9 +210,11 @@ export default function GuestsView({
     totalPages,
     paginationItemsToDisplay: isMobile ? 5 : 7
   });
+  // TRAP: every index-based consumer (page slice, rowReveal math, No.
+  // numbering) must read `sorted`, not `guests` — sort BEFORE the slice.
   const pageGuests = showAll
-    ? guests
-    : guests.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    ? sorted
+    : sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const start = guests.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
   const end = Math.min(safePage * PAGE_SIZE, guests.length);
 
@@ -164,19 +232,20 @@ export default function GuestsView({
     );
   }, []);
 
-  // Reset pagination whenever the active filter set changes.
+  // Reset pagination whenever the active filter set or sort changes.
   useEffect(() => {
     setCurrentPage(1);
     setShowAll(false);
-  }, [search, partyId, groupId]);
+  }, [search, partyId, groupId, sort]);
 
   // BR-007: scroll the duplicate's existing row into view and highlight it.
   // "missing" keeps the highlight pending while the reset-filter fetch is in
   // flight; if the landed list still lacks the target (deleted mid-jump in
   // another tab), the grace timer bounds the pending state instead of leaking.
+  // Runs against `sorted` — the page math must match the displayed order.
   useEffect(() => {
     if (!highlightId || isLoading) return;
-    const step = rowReveal(guests, highlightId, {
+    const step = rowReveal(sorted, highlightId, {
       page: safePage,
       pageSize: PAGE_SIZE,
       showAll
@@ -196,20 +265,29 @@ export default function GuestsView({
     el.scrollIntoView({ block: "center", behavior: "smooth" });
     const t = setTimeout(() => setHighlightId(null), 2400);
     return () => clearTimeout(t);
-  }, [highlightId, isLoading, guests, safePage, showAll]);
+  }, [highlightId, isLoading, sorted, safePage, showAll]);
 
   // Newly created guest: ensure its flash row is on the visible page.
   useEffect(() => {
     if (!newGuestId || isLoading) return;
-    const step = rowReveal(guests, newGuestId, {
+    const step = rowReveal(sorted, newGuestId, {
       page: safePage,
       pageSize: PAGE_SIZE,
       showAll
     });
     if (step.type === "page") setCurrentPage(step.page);
-  }, [newGuestId, isLoading, guests, safePage, showAll]);
+  }, [newGuestId, isLoading, sorted, safePage, showAll]);
 
   const hasFilter = !!(search.trim() || partyId || groupId);
+
+  function toggleSort(key: SortKey) {
+    // Same key → flip direction; new key → ascending.
+    setSort((s) =>
+      s.key === key
+        ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" }
+    );
+  }
 
   function resetFilters() {
     setSearch("");
@@ -218,9 +296,13 @@ export default function GuestsView({
   }
 
   function buildCsvUrl(scope: "all" | "filtered") {
+    // Filtered export follows the screen: same filter seam, plus the active
+    // sort so the CSV rows land in the order the user sees.
     const filter =
       scope === "filtered"
-        ? Object.fromEntries(filterParams({ search, partyId, groupId }))
+        ? Object.fromEntries(
+            filterParams({ search, partyId, groupId, sort: sort.key, dir: sort.dir })
+          )
         : {};
     const qs = new URLSearchParams({ csv: "1", scope, ...filter });
     return `/api/guests?${qs}`;
@@ -499,33 +581,67 @@ export default function GuestsView({
                 <TableHeader>
                   <TableRow className="bg-transparent hover:bg-transparent">
                     <TableHead className="w-10">No.</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead className="w-14 text-center">Jumlah</TableHead>
+                    <SortHeader
+                      label="Nama"
+                      sortKey="name"
+                      sort={sort}
+                      onToggle={toggleSort}
+                    />
+                    <SortHeader
+                      label="Jumlah"
+                      sortKey="pax"
+                      sort={sort}
+                      onToggle={toggleSort}
+                      align="center"
+                      className="w-14"
+                    />
                     <TableHead className="hidden sm:table-cell">Alamat</TableHead>
-                    <TableHead>Party</TableHead>
-                    <TableHead>Group</TableHead>
+                    <SortHeader
+                      label="Party"
+                      sortKey="party_name"
+                      sort={sort}
+                      onToggle={toggleSort}
+                    />
+                    <SortHeader
+                      label="Group"
+                      sortKey="group_name"
+                      sort={sort}
+                      onToggle={toggleSort}
+                    />
                     <TableHead className="w-px">
                       <span className="sr-only">Actions</span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pageGuests.map((g, i) => (
-                    <TableRow
-                      key={newGuestId === g.id ? `${g.id}-new` : g.id}
-                      id={`guest-row-${g.id}`}
-                      className={cn(
-                        mounted && "animate-row-in",
-                        newGuestId === g.id && "animate-row-flash",
-                        highlightId === g.id &&
-                          "bg-accent-gold-subtle hover:bg-accent-gold-subtle"
-                      )}
-                      onAnimationEnd={
-                        newGuestId === g.id
-                          ? () => setNewGuestId(null)
-                          : undefined
-                      }
-                    >
+                  {/* Sort polish: top separator when the category value changes
+                      between adjacent rows (color-run collisions between
+                      custom-category fallback colors). */}
+                  {(() => {
+                    const sepKey =
+                      sort.key === "party_name" || sort.key === "group_name"
+                        ? sort.key
+                        : null;
+                    return pageGuests.map((g, i) => (
+                      <TableRow
+                        key={newGuestId === g.id ? `${g.id}-new` : g.id}
+                        id={`guest-row-${g.id}`}
+                        className={cn(
+                          mounted && "animate-row-in",
+                          newGuestId === g.id && "animate-row-flash",
+                          highlightId === g.id &&
+                            "bg-accent-gold-subtle hover:bg-accent-gold-subtle",
+                          sepKey &&
+                            i > 0 &&
+                            pageGuests[i - 1][sepKey] !== g[sepKey] &&
+                            "border-t border-default"
+                        )}
+                        onAnimationEnd={
+                          newGuestId === g.id
+                            ? () => setNewGuestId(null)
+                            : undefined
+                        }
+                      >
                         <TableCell className="text-muted tabular-nums">
                           {showAll ? i + 1 : (safePage - 1) * PAGE_SIZE + i + 1}
                         </TableCell>
@@ -563,8 +679,9 @@ export default function GuestsView({
                             </Button>
                           </TableActions>
                         </TableCell>
-                      </TableRow>
-                    ))}
+                       </TableRow>
+                    ));
+                  })()}
                 </TableBody>
               </Table>
             </div>
