@@ -2,13 +2,12 @@
 
 Wedding Guest Manager — standalone, single-admin wedding guest-list app. One administrator manually enters guests collected from multiple parties.
 
-**Status: MVP complete + deployed live** (incl. approved `/analytics` exception below). 82/82 tests green; typecheck/build clean. Live: https://wedding-guest-manager-pi.vercel.app (Vercel + Supabase Postgres, auto-deploy from GitHub `main`). Local SQLite data (21 guests) migrated 2026-08-19.
+**Status: MVP complete + deployed live** (incl. approved `/analytics` exception below). 108/108 tests green; typecheck/build clean. Live: https://wedding-guest-manager-pi.vercel.app (Vercel + Supabase Postgres, auto-deploy from GitHub `main`). Local SQLite data (21 guests) migrated 2026-08-19.
 
 Source of truth:
 - `PRD-Wedding-Guest-Manager.md` — product spec. Read before non-trivial work. Do not invent product scope.
 - `DESIGN.md` (+ `.impeccable/design.json`) — design system. Read before UI work; keep in sync when the system changes.
 - `CONTEXT.md` — domain glossary (Guest, Party, Group, pax, duplicate name, Guest filter, sort state, distribution). Keep in sync when a term sharpens.
-- `Task.md` — tracked task queue (cleanup, audits, refactors) with per-task scope, constraints, and status log. Read at session start; execute one task at a time; update its Status Log when done. Do not start a listed task without following its written scope.
 
 ## Commands
 
@@ -53,7 +52,7 @@ A request that changes guest identity, party/group cardinality, required guest f
 |---|---|
 | `src/lib/guests.ts` | ALL guest business rules: CRUD, duplicate check, filter semantics, sort-aware CSV export |
 | `src/lib/guest-filter.ts` | The Guest filter seam: `GuestFilter` type (+ optional `sort`/`dir`, whitelisted in `parseFilter`) + `filterParams`/`parseFilter` (query-param encode/decode) — pure module, safe for client AND server import; all query-string building goes through it, never hand-rolled |
-| `src/lib/guest-sort.ts` | Pure table sort: `SortKey`/`SortState`/`sortGuests` (pax numeric, `id` locale, name-asc tiebreak mirroring the SQL `, g.name ASC`) + `SORT_KEYS` whitelist; default `{name, asc}` = server order, zero visual diff |
+| `src/lib/guest-sort.ts` | Pure table sort: `SortKey`/`SortState`/`sortGuests` (pax numeric, `id` locale, name-asc tiebreak mirroring the SQL `, g.name ASC`) + `SORT_KEYS` whitelist; default `{name, asc}` = server order, zero visual diff. Also the sort wording seam: `isDefaultSort`/`sortDirectionWord`/`sortDescription`/`sortAnnouncement` (count-line "Terurut: …" suffix, A–Z/Z–A, Jumlah 1→4/4→1, SR aria-live text) |
 | `src/lib/duplicate-jump.ts` | BR-007 duplicate jump decision core: pure `rowReveal()` → missing / page / visible; shared by duplicate highlight + new-guest flash effects |
 | `src/lib/normalize.ts` | `normalizeName` (BR-006), error classes, and `errorPayload` — the single source of the API error wire contract (409 duplicate + existingId / 404 / 400 + field / 500) |
 | `src/lib/api-error.ts` | Thin `NextResponse` wrapper over `errorPayload` — never hand-builds error JSON |
@@ -76,7 +75,7 @@ A request that changes guest identity, party/group cardinality, required guest f
 | `src/components/charts/` | 14 vendored bklit chart files — do not hand-edit |
 | `src/components/app-shell.tsx` | Dual nav: 72px desktop icon rail + mobile bottom nav (<lg), TopBar; `/login` renders without chrome |
 | `src/hooks/` | `use-guest-list` (guest-list data module: debounce + filter encode + fetch + refresh, race-safe, optional `sort`/`dir` passthrough for the CSV seam — guests-view deliberately sorts client-side instead; consumed by guests-view AND use-analytics-data), `use-analytics-data` (derive-only distribution on top), `use-is-mobile`, `use-pagination`, `use-reduced-motion` |
-| `src/lib/*.test.ts`, `src/hooks/*.test.ts` | 82 tests: guests 23 · categories 10 · filter 8 · guest-filter 10 · guest-sort 10 · duplicate-jump 6 · request-gate 4 · api-error 6 · auth 5 |
+| `src/lib/*.test.ts`, `src/hooks/*.test.ts` | 108 tests: guests 23 · categories 10 · filter 8 · guest-filter 10 · guest-sort 36 · duplicate-jump 6 · request-gate 4 · api-error 6 · auth 5 |
 | `vitest.setup.ts` | Per-worker Postgres schema `test_w<N>` via `search_path` on `DATABASE_URL`; loads `ADMIN_SESSION_SECRET` from `.env.local` (fixed fallback) |
 | `DEPLOYMENT.md` | Deployment + env vars (incl. required `ADMIN_SESSION_SECRET`) |
 

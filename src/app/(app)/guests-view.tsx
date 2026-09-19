@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { apiGet, apiSend, ApiError } from "@/lib/client";
 import { filterParams } from "@/lib/guest-filter";
 import { rowReveal } from "@/lib/duplicate-jump";
 import {
   sortGuests,
   DEFAULT_SORT,
+  isDefaultSort,
+  sortDescription,
+  sortAnnouncement,
   type SortKey,
   type SortState
 } from "@/lib/guest-sort";
@@ -51,8 +54,9 @@ import {
   Search,
   Plus,
   ChevronDown,
-  ChevronUp,
-  ChevronsUpDown,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   RotateCcw,
   Pencil,
   Trash2,
@@ -107,8 +111,10 @@ const ALL = "__all__";
 const PAX_OPTIONS = [1, 2, 3, 4];
 
 /** Sortable table header: full-cell button (≥44px hit area via -m-3 p-3),
- * aria-sort on the <th>. Idle icon hidden until hover/focus on pointer
- * devices, always faintly visible below lg (no hover on touch). */
+ * aria-sort on the <th>. Idle ArrowUpDown icon rests at 70% opacity
+ * (≥3:1 on the surface-1 header) at every breakpoint, full opacity on
+ * hover/focus; the active column swaps to a gold ArrowUp/ArrowDown and
+ * a text-primary label. */
 function SortHeader({
   label,
   sortKey,
@@ -127,9 +133,9 @@ function SortHeader({
   const active = sort.key === sortKey;
   const Icon = active
     ? sort.dir === "asc"
-      ? ChevronUp
-      : ChevronDown
-    : ChevronsUpDown;
+      ? ArrowUp
+      : ArrowDown
+    : ArrowUpDown;
   return (
     <TableHead
       className={cn("group/head", className)}
@@ -139,8 +145,11 @@ function SortHeader({
         variant="ghost"
         size="sm"
         onClick={() => onToggle(sortKey)}
+        aria-label={`Urutkan berdasarkan ${label}`}
+        title={`Urutkan berdasarkan ${label}`}
         className={cn(
-          "-m-3 h-auto min-h-11 w-full gap-1.5 p-3 text-xs font-medium uppercase tracking-wide",
+          "-m-3 h-auto min-h-11 w-full gap-1.5 p-3 text-xs font-medium uppercase tracking-wide focus-visible:ring-offset-surface-1",
+          active && "text-primary hover:text-primary",
           align === "center" ? "justify-center" : "justify-start"
         )}
       >
@@ -148,10 +157,10 @@ function SortHeader({
         <Icon
           aria-hidden="true"
           className={cn(
-            "shrink-0 transition-opacity",
+            "shrink-0 transition-opacity duration-150",
             active
               ? "text-accent-gold"
-              : "text-muted opacity-0 group-hover/head:opacity-100 group-focus-within/head:opacity-100 max-lg:opacity-40"
+              : "text-muted opacity-70 group-hover/head:opacity-100 group-focus-within/head:opacity-100"
           )}
         />
       </Button>
@@ -202,6 +211,19 @@ export default function GuestsView({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // SR-only sort announcement (aria-live). The region renders empty from the
+  // first paint; the ref-seeded comparison skips the initial effect run (and
+  // the StrictMode double-run) so nothing is announced on first render —
+  // only on an actual toggle or reset-to-default.
+  const [announcement, setAnnouncement] = useState("");
+  const lastAnnounced = useRef(sortAnnouncement(DEFAULT_SORT));
+  useEffect(() => {
+    const msg = sortAnnouncement(sort);
+    if (msg === lastAnnounced.current) return;
+    lastAnnounced.current = msg;
+    setAnnouncement(msg);
+  }, [sort]);
 
   const totalPages = Math.max(1, Math.ceil(guests.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -539,8 +561,29 @@ export default function GuestsView({
             {showAll
               ? `semua ${guests.length} tamu`
               : `${start}–${end} dari ${guests.length} tamu`}
+            {!isDefaultSort(sort) && (
+              <>
+                {" · "}
+                {sortDescription(sort)}
+                {" · "}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSort(DEFAULT_SORT)}
+                  className="h-auto px-1.5 py-0.5"
+                >
+                  Urutan default
+                </Button>
+              </>
+            )}
           </p>
         )}
+
+        {/* SR-only: announces sort changes; plain text node, NOT aria-live on
+            the count line above. Empty until the first real toggle. */}
+        <p aria-live="polite" className="sr-only">
+          {announcement}
+        </p>
 
         {error && <Alert variant="error">{error}</Alert>}
 

@@ -3,7 +3,14 @@ import {
   sortGuests,
   DEFAULT_SORT,
   SORT_KEYS,
-  type SortableGuest
+  SORT_COLUMN_LABELS,
+  isDefaultSort,
+  sortDirectionWord,
+  sortDescription,
+  sortAnnouncement,
+  type SortableGuest,
+  type SortKey,
+  type SortState
 } from "./guest-sort";
 
 function g(partial: Partial<SortableGuest>): SortableGuest {
@@ -94,5 +101,77 @@ describe("sortGuests — contract", () => {
       "Budi"
     ]);
     expect(SORT_KEYS).toEqual(["name", "pax", "party_name", "group_name"]);
+  });
+});
+
+describe("sort wording — labels and default detection", () => {
+  it("uses the Indonesian header labels", () => {
+    expect(SORT_COLUMN_LABELS).toEqual({
+      name: "Nama",
+      pax: "Jumlah",
+      party_name: "Party",
+      group_name: "Group"
+    });
+    expect(SORT_COLUMN_LABELS[SORT_KEYS[0]]).toBe("Nama");
+  });
+
+  it("treats name asc as default and any other state as non-default", () => {
+    expect(isDefaultSort(DEFAULT_SORT)).toBe(true);
+    expect(isDefaultSort({ key: "name", dir: "desc" })).toBe(false);
+    expect(isDefaultSort({ key: "pax", dir: "asc" })).toBe(false);
+    expect(isDefaultSort({ key: "party_name", dir: "desc" })).toBe(false);
+    expect(isDefaultSort({ key: "group_name", dir: "asc" })).toBe(false);
+  });
+});
+
+describe("sortDirectionWord — per column × direction", () => {
+  const textKeys: SortKey[] = ["name", "party_name", "group_name"];
+  const cases: Array<[SortState, string]> = [
+    ...textKeys.map((key) => [{ key, dir: "asc" }, "A–Z"] as [SortState, string]),
+    ...textKeys.map((key) => [{ key, dir: "desc" }, "Z–A"] as [SortState, string]),
+    [{ key: "pax", dir: "asc" }, "1→4"],
+    [{ key: "pax", dir: "desc" }, "4→1"]
+  ];
+
+  it.each(cases)("maps each column × direction", (sort, word) => {
+    expect(sortDirectionWord(sort)).toBe(word);
+  });
+});
+
+describe("sortDescription — visible count-line suffix", () => {
+  it("is empty at the default sort state", () => {
+    expect(sortDescription(DEFAULT_SORT)).toBe("");
+  });
+
+  it.each([
+    [{ key: "pax", dir: "asc" }, "Terurut: Jumlah (1→4)"],
+    [{ key: "pax", dir: "desc" }, "Terurut: Jumlah (4→1)"],
+    [{ key: "name", dir: "desc" }, "Terurut: Nama (Z–A)"],
+    [{ key: "party_name", dir: "asc" }, "Terurut: Party (A–Z)"],
+    [{ key: "party_name", dir: "desc" }, "Terurut: Party (Z–A)"],
+    [{ key: "group_name", dir: "asc" }, "Terurut: Group (A–Z)"],
+    [{ key: "group_name", dir: "desc" }, "Terurut: Group (Z–A)"]
+  ] as Array<[SortState, string]>)("builds the visible suffix", (sort, text) => {
+    expect(sortDescription(sort)).toBe(text);
+  });
+});
+
+describe("sortAnnouncement — aria-live text", () => {
+  it("announces the default order after a reset (never empty)", () => {
+    expect(sortAnnouncement(DEFAULT_SORT)).toBe(
+      "Terurut berdasarkan Nama, menaik"
+    );
+  });
+
+  it.each([
+    [{ key: "name", dir: "desc" }, "Terurut berdasarkan Nama, menurun"],
+    [{ key: "pax", dir: "asc" }, "Terurut berdasarkan Jumlah, menaik"],
+    [{ key: "pax", dir: "desc" }, "Terurut berdasarkan Jumlah, menurun"],
+    [{ key: "party_name", dir: "asc" }, "Terurut berdasarkan Party, menaik"],
+    [{ key: "party_name", dir: "desc" }, "Terurut berdasarkan Party, menurun"],
+    [{ key: "group_name", dir: "asc" }, "Terurut berdasarkan Group, menaik"],
+    [{ key: "group_name", dir: "desc" }, "Terurut berdasarkan Group, menurun"]
+  ] as Array<[SortState, string]>)("builds the spoken announcement", (sort, text) => {
+    expect(sortAnnouncement(sort)).toBe(text);
   });
 });
