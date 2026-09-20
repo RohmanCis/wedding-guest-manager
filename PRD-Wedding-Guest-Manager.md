@@ -416,7 +416,20 @@ The administrator can sort the guest table by clicking the column headers: `Nama
 - `pax` compares numerically; string columns compare with the `id` locale; ties break on name ascending.
 - The filtered CSV export follows the on-screen sort order (hybrid: client sort, server-side ORDER BY for export only).
 - Changing sort resets pagination to page 1.
-- Out of scope: grouped/sectioned view, multi-column sort, URL-synced sort state.
+- Out of scope: multi-column sort, URL-synced sort state. (A grouped/sectioned presentation now exists as the separate read-only `/daftar` page per FR-017 — user decision 2026-09-20; the Guests table itself stays flat.)
+
+### FR-017 Daftar (Sectioned Scan View)
+
+Added by explicit product decision (user, 2026-09-20).
+
+The application provides a read-only page "Daftar" at `/daftar` showing all guests on one scrolling page (no pagination), sectioned by Party or by Group via a mode toggle.
+
+- Sections follow the existing category list order; within a section, guests are ordered by name ascending.
+- Each section header shows the category identity (color dot + icon), the category name, and the count of guest entries in that section. Counts are entries, not pax-weighted.
+- The page carries the same filters as the Guests page: name search, Party, Group, combined filtering, and reset.
+- Empty sections are always hidden.
+- The Guests table (FR-002/FR-016) stays unchanged.
+- Out of scope: edit/delete actions, export/print/share, pax totals or charts per section, collapsible sections, multi-column sort, URL-synced state.
 
 ---
 
@@ -440,8 +453,10 @@ Optimize for:
 Keep navigation minimal:
 
 ```text
-Dashboard / Guests
-Categories
+Tamu (Guests)
+Daftar
+Kategori
+Analitik
 ```
 
 No navigation section should exist for out-of-scope features.
@@ -588,6 +603,15 @@ wedding-guests-filtered-YYYY-MM-DD.csv
 - Changing sort or filters returns to page 1.
 - Filtered CSV export rows land in the on-screen sort order.
 
+### Daftar (Sectioned View)
+
+- Every guest appears exactly once across all sections.
+- Section entry counts sum to the total number of displayed guests.
+- The Party/Group mode toggle regroups instantly without refetching.
+- Search, Party, and Group filters combine; reset restores the unfiltered view.
+- Empty sections never render.
+- The Guests page behavior is unchanged.
+
 ### Category Management
 
 - Admin can add Party.
@@ -666,7 +690,11 @@ Simple form for the four guest fields.
 
 Simple management for Party and Group.
 
-### Screen 4: Dashboard
+### Screen 4: Daftar
+
+Read-only sectioned scan view of all guests (Party/Group toggle, shared filters).
+
+### Screen 5: Dashboard
 
 Optional lightweight summary surface. It can be combined into the Guests screen if that produces a cleaner workflow.
 

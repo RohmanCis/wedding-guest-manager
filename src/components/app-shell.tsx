@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { Users, Tag, BarChart2, LogOut } from "lucide-react";
+import { Users, Tag, BarChart2, LogOut, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Tamu", icon: Users },
+  { href: "/daftar", label: "Daftar", icon: List },
   { href: "/categories", label: "Kategori", icon: Tag },
   { href: "/analytics", label: "Analitik", icon: BarChart2 }
 ];
