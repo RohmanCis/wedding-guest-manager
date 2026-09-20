@@ -14,6 +14,7 @@ import {
   type SortState
 } from "@/lib/guest-sort";
 import { useGuestList } from "@/hooks/use-guest-list";
+import { useAddGuestShortcut } from "@/hooks/use-add-guest-shortcut";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
 import {
@@ -204,6 +205,8 @@ export default function GuestsView({
   // the first paint is byte-identical to the SSR order.
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
   const sorted = useMemo(() => sortGuests(guests, sort), [guests, sort]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   // First client paint shows SSR data without enter animations (LCP un-gate);
   // later renders (filter changes, new guest) animate rows in via CSS.
   const [mounted, setMounted] = useState(false);
@@ -340,6 +343,12 @@ export default function GuestsView({
     });
   }
 
+  // Desktop accelerator: Ctrl/Cmd+Enter opens the same "Tambah Tamu" handler.
+  useAddGuestShortcut(openAdd, {
+    dialogOpen: !!form || !!confirmId,
+    searchInput: searchInputRef
+  });
+
   function openEdit(g: Guest) {
     setFormError("");
     setDupId(null);
@@ -351,6 +360,19 @@ export default function GuestsView({
       groupId: g.group_id,
       pax: g.pax
     });
+  }
+
+  /** Focus Nama on open — desktop/fine-pointer only, so phones/tablets don't
+   *  pop the touch keyboard. Runs client-side (modal mounts after a click).
+   *  On coarse pointers we keep Radix's default focus behavior untouched. */
+  function focusNameOnOpen(e: Event) {
+    if (typeof window === "undefined") return;
+    // preventDefault only when we will actually move focus: Nama ref live AND
+    // fine pointer. Anything else keeps Radix's default focus untouched.
+    if (!nameInputRef.current) return;
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+    e.preventDefault();
+    nameInputRef.current.focus();
   }
 
   async function submitForm(e: React.FormEvent) {
@@ -447,9 +469,19 @@ export default function GuestsView({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Button size="sm" onClick={openAdd}>
+      <Button
+        size="sm"
+        onClick={openAdd}
+        aria-keyshortcuts="Control+Enter Meta+Enter"
+      >
         <Plus aria-hidden="true" />
         Tambah Tamu
+        <kbd
+          aria-hidden="true"
+          className="hidden rounded border border-default px-1 py-0.5 text-[10px] font-normal leading-none opacity-80 lg:inline-flex"
+        >
+          Ctrl ↵
+        </kbd>
       </Button>
     </>
   );
@@ -500,6 +532,7 @@ export default function GuestsView({
               aria-hidden="true"
             />
             <Input
+              ref={searchInputRef}
               aria-label="Cari nama"
               className="w-full pl-9 sm:w-56"
               placeholder="Cari nama..."
@@ -813,7 +846,7 @@ export default function GuestsView({
         )}
 
         <Modal open={!!form} onOpenChange={(o) => !o && setForm(null)}>
-          <ModalContent aria-describedby={undefined}>
+          <ModalContent aria-describedby={undefined} onOpenAutoFocus={focusNameOnOpen}>
             <ModalHeader
               title={form?.id ? "Edit Tamu" : "Tambah Tamu"}
               description={
@@ -829,6 +862,7 @@ export default function GuestsView({
                   <Field label="Nama" htmlFor="guest-name">
                     <Input
                       id="guest-name"
+                      ref={nameInputRef}
                       value={form.name}
                       error={!!formError}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
