@@ -174,6 +174,7 @@ seeds default Parties/Groups automatically).
 | `ADMIN_SESSION_SECRET` | (required) a stable 64 hex char string. The app fails to boot without it. Generate one: `node -e "console.log(Array.from({length:64},()=>'0123456789abcdef'[Math.floor(Math.random()*16)]).join(''))"`. | Production, Preview, Development |
 
 4. **Deploy** → wait ~1 min → you get `https://wedding-guest-manager.vercel.app`.
+   Note: preview deployments (branch pushes) share the production `DATABASE_URL` — anything you do on a preview URL hits live data; test read-only.
 5. Open it. Log in. The tables are created and seeded on first request.
 
 Every future `git push` to `main` redeploys automatically.

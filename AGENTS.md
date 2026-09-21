@@ -7,7 +7,7 @@ Wedding Guest Manager — standalone, single-admin wedding guest-list app. One a
 Source of truth:
 - `PRD-Wedding-Guest-Manager.md` — product spec. Read before non-trivial work. Do not invent product scope.
 - `DESIGN.md` (+ `.impeccable/design.json`) — design system. Read before UI work; keep in sync when the system changes.
-- `CONTEXT.md` — domain glossary (Guest, Party, Group, pax, duplicate name, Guest filter, sort state, distribution). Keep in sync when a term sharpens.
+- `CONTEXT.md` — domain glossary (Guest, Party, Group, pax, duplicate name, Guest filter, sort state, distribution, section). Keep in sync when a term sharpens.
 
 ## Commands
 
@@ -18,6 +18,8 @@ npm run build       # next build
 ```
 
 All three must pass before a task is done.
+
+Windows/PowerShell note: always double-quote paths containing parentheses (e.g. `"src/app/(app)/..."`) — bare `src/app/(app)/...` is parsed as a subexpression and silently mangles git/npm arguments.
 
 ## Precedence
 
@@ -76,8 +78,8 @@ A request that changes guest identity, party/group cardinality, required guest f
 | `src/components/ui/` | 13 shared primitives (incl. pagination) — consume, never restyle locally |
 | `src/components/charts/` | 14 vendored bklit chart files — do not hand-edit |
 | `src/components/app-shell.tsx` | Dual nav: 72px desktop icon rail + mobile bottom nav (<lg), TopBar; `/login` renders without chrome |
-| `src/hooks/` | `use-guest-list` (guest-list data module: debounce + filter encode + fetch + refresh, race-safe, optional `sort`/`dir` passthrough for the CSV seam — guests-view deliberately sorts client-side instead; consumed by guests-view AND use-analytics-data), `use-analytics-data` (derive-only distribution on top), `use-add-guest-shortcut` (Ctrl/Cmd+Enter → Tambah Tamu; pure `shouldTriggerShortcut` predicate + ref-stable window listener), `use-is-mobile`, `use-pagination`, `use-reduced-motion` |
-| `src/lib/*.test.ts`, `src/hooks/*.test.ts` | 133 tests: guests 23 · categories 10 · filter 8 · guest-filter 10 · guest-sort 36 · group-guests 8 · duplicate-jump 6 · request-gate 4 · api-error 6 · auth 5 · add-guest-shortcut 17 |
+| `src/hooks/` | `use-guest-list` (guest-list data module: debounce + filter encode + fetch + refresh, race-safe, optional `sort`/`dir` passthrough for the CSV seam — guests-view deliberately sorts client-side instead; consumed by guests-view, use-analytics-data, AND daftar-view, which leaves sort/dir unset and uses the server default order), `use-analytics-data` (derive-only distribution on top), `use-add-guest-shortcut` (Ctrl/Cmd+Enter → Tambah Tamu; pure `shouldTriggerShortcut` predicate + ref-stable window listener), `use-is-mobile`, `use-pagination`, `use-reduced-motion` |
+| `src/lib/*.test.ts`, `src/hooks/*.test.ts` | 133 tests: guests 23 · categories 10 · filter 8 · guest-filter 10 · guest-sort 36 · group-guests 8 · duplicate-jump 6 · use-guest-list (request-gate) 4 · api-error 6 · auth 5 · add-guest-shortcut 17 |
 | `vitest.setup.ts` | Per-worker Postgres schema `test_w<N>` via `search_path` on `DATABASE_URL`; loads `ADMIN_SESSION_SECRET` from `.env.local` (fixed fallback) |
 | `DEPLOYMENT.md` | Deployment + env vars (incl. required `ADMIN_SESSION_SECRET`) |
 
@@ -91,3 +93,14 @@ Stack notes: `motion` 13 — package name `motion`, imported as `motion/react` (
 - Validation: reject blank values after trim; errors clear and local to the field; never expose raw DB errors. Destructive actions need confirmation.
 - Unknowns → ask; don't guess product scope.
 - Tech debt (2026-09-20): the guest filter toolbar UI now exists in three views (guests-view, analytics-view, daftar-view). Extracting a shared filter component is a separate future task — do not extract opportunistically inside unrelated changes.
+
+## Open follow-ups
+
+(Recording only — this list is not a backlog; each item starts with its own decision. Task.md was removed deliberately in 5329087 and stays removed.)
+
+1. **Router Cache staleness** — Next 14.2.5 dynamic-page Router Cache default is 30s and `next.config.mjs` sets no `staleTimes`; a `/daftar` or `/analytics` revisit within 30s of a guest/category mutation can serve the stale cached RSC payload (mutations call `useGuestList.refresh()` — a client fetch — but never `router.refresh()`: guests-view.tsx:397, :437; categories-view has no refresh at all). Recovery today: change a filter on the page or reload. Options: (A) `router.refresh()` after mutations, (B) `experimental.staleTimes { dynamic: 0 }`, (C) accept and document. Status: DECISION NEEDED — discuss in a new session; do not implement here.
+2. **Pre-merge manual checks for feat/daftar** — 5-item bottom nav at 375px, sticky section header under TopBar on real iOS Safari incl. Add to Home Screen, Vercel preview URL confirmed. Preview deployments share the production `DATABASE_URL` — any manual test on preview must be read-only.
+3. **Filter toolbar duplicated in 3 views** (see Tech debt above — one entry, same item).
+4. **content-visibility on /daftar** — only if measured slow at ~3000 guests; not implemented in v1.
+5. **Category create/rename does not catch UNIQUE violation 23505** — theoretical single-admin race; low priority.
+6. **Category name uniqueness is case-sensitive** ("groom" vs "Groom" both allowed) — confirm whether intended.

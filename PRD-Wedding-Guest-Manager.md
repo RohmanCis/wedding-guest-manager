@@ -68,6 +68,7 @@ The MVP is successful when the administrator can manually build and maintain the
   - Address
   - Party
   - Group
+  - Pax (1–4 people per entry; added by explicit user decision 2026-08-19)
 - Exactly one Party per guest.
 - Exactly one Group per guest.
 - Party management from UI.
@@ -90,7 +91,7 @@ Do not implement any of the following in MVP:
 - Guest invitation status.
 - RSVP.
 - Attendance/check-in.
-- Pax/household management.
+- Household management (tracking member names within one entry).
 - QR code.
 - WhatsApp integration.
 - Email/SMS integration.
@@ -121,6 +122,7 @@ Required fields:
 | address | string | Yes | One free-text field; non-empty after trimming |
 | party_id | foreign key | Yes | Exactly one Party |
 | group_id | foreign key | Yes | Exactly one Group |
+| pax | integer | Yes | 1–4 people per entry, default 1 (explicit user decision 2026-08-19 — a people count per entry, not household member tracking) |
 | created_at | timestamp | Yes | System generated |
 | updated_at | timestamp | Yes | System generated |
 
@@ -276,7 +278,7 @@ CSV export must reflect the visible filtering criteria at the moment export is i
 CSV export should include at minimum:
 
 ```text
-Name,Address,Party,Group
+Name,Address,Party,Group,Pax
 ```
 
 The exported CSV must contain one guest per row.
@@ -557,6 +559,7 @@ Name
 Address
 Party
 Group
+Pax
 ```
 
 ### Filename
@@ -626,7 +629,7 @@ wedding-guests-filtered-YYYY-MM-DD.csv
 
 - Export All contains every guest.
 - Export Filtered contains only the active filtered result set.
-- CSV columns are `Name,Address,Party,Group`.
+- CSV columns are `Name,Address,Party,Group,Pax`.
 - Exported CSV is UTF-8.
 
 ### Scope Control
