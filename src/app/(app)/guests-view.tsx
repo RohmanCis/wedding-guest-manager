@@ -440,10 +440,15 @@ export default function GuestsView({
     }
   }
 
-  const total = parties.reduce((sum, p) => sum + (p.used ?? 0), 0);
-  // ponytail: pax sum over the currently loaded guest list — reflects active
-  // filters; make /api/categories return a global pax sum if this bothers later.
+  // Stat cards follow the active filter (screen scope). `allTotal` stays global
+  // only to separate "no guests yet" from "filter matched nothing".
+  const allTotal = parties.reduce((sum, p) => sum + (p.used ?? 0), 0);
+  const total = guests.length;
   const totalPax = guests.reduce((sum, g) => sum + g.pax, 0);
+  const partyCounts = guests.reduce<Record<string, number>>((counts, g) => {
+    counts[g.party_id] = (counts[g.party_id] ?? 0) + 1;
+    return counts;
+  }, {});
 
   const topActions = (
     <>
@@ -519,7 +524,7 @@ export default function GuestsView({
                   {p.name}
                 </span>
               }
-              value={p.used ?? 0}
+              value={partyCounts[p.id] ?? 0}
               accent={colorFor(p.name).dot}
             />
           ))}
@@ -625,7 +630,7 @@ export default function GuestsView({
             <TableSkeleton rows={6} />
           </TableContainer>
         ) : guests.length === 0 ? (
-          total === 0 ? (
+          allTotal === 0 ? (
             <EmptyState
               variant="empty"
               title="Belum ada tamu"
