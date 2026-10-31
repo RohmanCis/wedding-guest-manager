@@ -205,6 +205,15 @@ export async function exportGuestsCsv(
   return lines.join("\r\n");
 }
 
+// Dynamic import keeps exceljs out of every page chunk that imports guests.ts.
+export async function exportGuestsXlsx(
+  filter: GuestFilter = {}
+): Promise<Buffer> {
+  const rows = await listGuests(filter);
+  const { buildGuestsXlsx } = await import("./export-xlsx");
+  return buildGuestsXlsx(rows);
+}
+
 export function csvCell(value: string): string {
   const v = value ?? "";
   if (/[",\r\n]/.test(v)) {

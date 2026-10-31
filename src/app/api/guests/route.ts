@@ -6,6 +6,7 @@ import {
   updateGuest,
   deleteGuest,
   exportGuestsCsv,
+  exportGuestsXlsx,
   GuestInput
 } from "@/lib/guests";
 import { parseFilter } from "@/lib/guest-filter";
@@ -17,8 +18,21 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const filter = parseFilter(sp);
   if (sp.get("csv") === "1") {
-    const csv = await exportGuestsCsv(filter);
     const scope = sp.get("scope") === "all" ? "all" : "filtered";
+    const base = `wedding-guests-${scope}-${new Date().toISOString().slice(0, 10)}`;
+    if (sp.get("format") === "xlsx") {
+      const xlsx = await exportGuestsXlsx(filter);
+      return new NextResponse(new Uint8Array(xlsx), {
+        status: 200,
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="${base}.xlsx"`,
+          "Cache-Control": "no-store"
+        }
+      });
+    }
+    const csv = await exportGuestsCsv(filter);
     return new NextResponse(csv, {
       status: 200,
       headers: {

@@ -319,9 +319,9 @@ export default function GuestsView({
     );
   }
 
-  function buildCsvUrl(scope: "all" | "filtered") {
+  function buildExportUrl(scope: "all" | "filtered", format: "csv" | "xlsx") {
     // Filtered export follows the screen: same filter seam, plus the active
-    // sort so the CSV rows land in the order the user sees.
+    // sort so the rows land in the order the user sees.
     const filter =
       scope === "filtered"
         ? Object.fromEntries(
@@ -329,6 +329,7 @@ export default function GuestsView({
           )
         : {};
     const qs = new URLSearchParams({ csv: "1", scope, ...filter });
+    if (format === "xlsx") qs.set("format", "xlsx");
     return `/api/guests?${qs}`;
   }
 
@@ -454,21 +455,33 @@ export default function GuestsView({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="sm">
-            Export CSV
+            Export
             <ChevronDown aria-hidden="true" className="text-muted" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
-            <a href={buildCsvUrl("all")}>
+            <a href={buildExportUrl("all", "csv")}>
               <FileDown aria-hidden="true" />
-              Semua tamu
+              CSV — Semua tamu
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem asChild disabled={!hasFilter}>
-            <a href={buildCsvUrl("filtered")}>
+            <a href={buildExportUrl("filtered", "csv")}>
               <FileDown aria-hidden="true" />
-              Hasil filter saat ini
+              CSV — Hasil filter saat ini
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href={buildExportUrl("all", "xlsx")}>
+              <FileDown aria-hidden="true" />
+              Excel (.xlsx) — Semua tamu
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild disabled={!hasFilter}>
+            <a href={buildExportUrl("filtered", "xlsx")}>
+              <FileDown aria-hidden="true" />
+              Excel (.xlsx) — Hasil filter
             </a>
           </DropdownMenuItem>
         </DropdownMenuContent>
