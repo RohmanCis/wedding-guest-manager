@@ -15,17 +15,30 @@ function tableOf(table: Table) {
   return sql`${sql(table)}`;
 }
 
+/** `name` UNIQUE is the authority (23505) — no pre-check race window. */
+function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    (e as { code?: string }).code === "23505"
+  );
+}
+
 async function create(table: Table, name: string): Promise<CategoryRow> {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new ValidationError("name", "Name is required.");
   await getDb();
-  const t = tableOf(table);
-  const dup = await sql`SELECT id FROM ${t} WHERE name = ${trimmed}`;
-  if (dup.length) throw new ValidationError("name", "Name already exists.");
   const id = cryptoId();
   const now = new Date().toISOString();
-  await sql`INSERT INTO ${t} (id, name, created_at, updated_at)
-    VALUES (${id}, ${trimmed}, ${now}, ${now})`;
+  try {
+    await sql`INSERT INTO ${tableOf(table)} (id, name, created_at, updated_at)
+      VALUES (${id}, ${trimmed}, ${now}, ${now})`;
+  } catch (e) {
+    if (isUniqueViolation(e))
+      throw new ValidationError("name", "Name already exists.");
+    throw e;
+  }
   return getById(table, id);
 }
 
@@ -47,10 +60,14 @@ async function rename(
   const t = tableOf(table);
   const row = await sql`SELECT id FROM ${t} WHERE id = ${id}`;
   if (!row.length) throw new NotFoundError("Category not found.");
-  const dup = await sql`SELECT id FROM ${t} WHERE name = ${trimmed} AND id != ${id}`;
-  if (dup.length) throw new ValidationError("name", "Name already exists.");
   const now = new Date().toISOString();
-  await sql`UPDATE ${t} SET name = ${trimmed}, updated_at = ${now} WHERE id = ${id}`;
+  try {
+    await sql`UPDATE ${t} SET name = ${trimmed}, updated_at = ${now} WHERE id = ${id}`;
+  } catch (e) {
+    if (isUniqueViolation(e))
+      throw new ValidationError("name", "Name already exists.");
+    throw e;
+  }
   return getById(table, id);
 }
 

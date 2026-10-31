@@ -52,6 +52,12 @@ describe("category management", () => {
     await parties.create("Dup");
     await expect(parties.create("Dup")).rejects.toThrow(ValidationError);
   });
+
+  it("prevents renaming onto an existing name", async () => {
+    await groups.create("One");
+    const two = await groups.create("Two");
+    await expect(groups.rename(two.id, "One")).rejects.toThrow(ValidationError);
+  });
 });
 
 describe("CSV export", () => {
