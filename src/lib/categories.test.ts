@@ -58,6 +58,25 @@ describe("category management", () => {
     const two = await groups.create("Two");
     await expect(groups.rename(two.id, "One")).rejects.toThrow(ValidationError);
   });
+
+  it("treats category names case-insensitively", async () => {
+    await parties.create("Budi");
+    await expect(parties.create("budi")).rejects.toThrow(ValidationError);
+  });
+
+  it("rejects a rename differing only by case from another category", async () => {
+    await groups.create("Kolega");
+    const other = await groups.create("Rekan");
+    await expect(groups.rename(other.id, "kolega")).rejects.toThrow(
+      ValidationError
+    );
+  });
+
+  it("allows changing the case of its own name", async () => {
+    const p = await parties.create("Sahabat");
+    const renamed = await parties.rename(p.id, "sahabat");
+    expect(renamed.name).toBe("sahabat");
+  });
 });
 
 describe("CSV export", () => {

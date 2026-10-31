@@ -62,6 +62,10 @@ async function migrate() {
       updated_at TEXT NOT NULL,
       UNIQUE (name_norm)
     )`;
+  // Category names are case-insensitive: "Budi" and "budi" are the same name.
+  // The original case-sensitive UNIQUE stays; this index is strictly stronger.
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS parties_name_lc ON parties (lower(name))`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS groups_name_lc ON groups (lower(name))`;
 }
 
 const INITIAL_PARTIES = ["Groom", "Bride", "Groom Family", "Bride Family"];
