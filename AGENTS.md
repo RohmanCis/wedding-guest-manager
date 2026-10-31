@@ -10,6 +10,8 @@ Verified 2026-10-31 (`860afc6`, `d32de5d`): security headers added (`X-Frame-Opt
 
 Also 2026-10-31 (same day, after `8aee241`): dashboard stat cards now follow the active filter (`total` = filtered count, `totalPax` = filtered pax sum, party cards counted from the filtered list; the empty state still branches on the global count). Category names are case-insensitive — `CREATE UNIQUE INDEX ... (lower(name))` on `parties`/`groups` (23505 → `ValidationError`), checked against the live DB first (no case-collision rows). typecheck / **144** tests / build green.
 
+Also 2026-10-31, after `34af317`: the filter control surface was extracted to `GuestFilterFields` + `useGuestFilter` — guests, daftar, and analytics render the same search/Party/Group fields (analytics options now carry the category dot + icon too); each view keeps its own wrapper, Reset, and count line. Verified in a local browser at 375px and 1440px: filter + reset, debounce, Ctrl/Cmd+Enter accelerator, empty sections, no horizontal overflow. typecheck / 144 tests / build green.
+
 Live-verified 2026-10-31 by the owner in production (`34a9226`, real devices): the four security headers arrive, boot after the `lower(name)` indexes is clean, stat cards shrink with the active filter, a mutation followed by a revisit shows fresh data (no Router Cache staleness), and on real iOS Safari the sticky TopBar, Add to Home Screen, and the `/daftar` search/Party/Group filters all behave.
 
 Source of truth:
@@ -63,6 +65,8 @@ A request that changes guest identity, party/group cardinality, required guest f
 |---|---|
 | `src/lib/guests.ts` | ALL guest business rules: CRUD, duplicate check, filter semantics, sort-aware CSV export |
 | `src/lib/guest-filter.ts` | The Guest filter seam: `GuestFilter` type (+ optional `sort`/`dir`, whitelisted in `parseFilter`) + `filterParams`/`parseFilter` (query-param encode/decode) — pure module, safe for client AND server import; all query-string building goes through it, never hand-rolled |
+| `src/components/guest-filter-fields.tsx` | The one filter control surface: search + Party + Group selects (category dot + icon on every option), `layout="inline" | "stacked"`; renders no wrapper — caller owns row/column layout, Reset, count line |
+| `src/hooks/use-guest-filter.ts` | Filter triple as view state: `search`/`partyId`/`groupId` + setters, `reset`, `hasFilter` — one owner across guests, daftar, analytics |
 | `src/lib/guest-sort.ts` | Pure table sort: `SortKey`/`SortState`/`sortGuests` (pax numeric, `id` locale, name-asc tiebreak mirroring the SQL `, g.name ASC`) + `SORT_KEYS` whitelist; default `{name, asc}` = server order, zero visual diff. Also the sort wording seam: `isDefaultSort`/`sortDirectionWord`/`sortDescription`/`sortAnnouncement` (count-line "Terurut: …" suffix, A–Z/Z–A, Jumlah 1→4/4→1, SR aria-live text) |
 | `src/lib/group-guests.ts` | Pure `/daftar` grouping: `groupGuests()` sections by party/group name in category-list order, empty sections always hidden, unknown categories append as trailing sections — never dropped |
 | `src/lib/duplicate-jump.ts` | BR-007 duplicate jump decision core: pure `rowReveal()` → missing / page / visible; shared by duplicate highlight + new-guest flash effects |
@@ -87,7 +91,7 @@ A request that changes guest identity, party/group cardinality, required guest f
 | `src/components/ui/` | 13 shared primitives (incl. pagination) — consume, never restyle locally |
 | `src/components/charts/` | 14 vendored bklit chart files — do not hand-edit |
 | `src/components/app-shell.tsx` | Dual nav: 72px desktop icon rail + mobile bottom nav (<lg), TopBar; `/login` renders without chrome |
-| `src/hooks/` | `use-guest-list` (guest-list data module: debounce + filter encode + fetch + refresh, race-safe, optional `sort`/`dir` passthrough for the CSV seam — guests-view deliberately sorts client-side instead; consumed by guests-view, use-analytics-data, AND daftar-view, which leaves sort/dir unset and uses the server default order), `use-analytics-data` (derive-only distribution on top), `use-add-guest-shortcut` (Ctrl/Cmd+Enter → Tambah Tamu; pure `shouldTriggerShortcut` predicate + ref-stable window listener), `use-is-mobile`, `use-pagination`, `use-reduced-motion` |
+| `src/hooks/` | `use-guest-list` (guest-list data module: debounce + filter encode + fetch + refresh, race-safe, optional `sort`/`dir` passthrough for the CSV seam — guests-view deliberately sorts client-side instead; consumed by guests-view, use-analytics-data, AND daftar-view, which leaves sort/dir unset and uses the server default order), `use-guest-filter` (filter triple view state + `reset`/`hasFilter`), `use-analytics-data` (derive-only distribution on top), `use-add-guest-shortcut` (Ctrl/Cmd+Enter → Tambah Tamu; pure `shouldTriggerShortcut` predicate + ref-stable window listener), `use-is-mobile`, `use-pagination`, `use-reduced-motion` |
 | `src/lib/*.test.ts`, `src/hooks/*.test.ts` | 144 tests: guests 23 · categories 14 · filter 8 · guest-filter 10 · guest-sort 36 · group-guests 8 · duplicate-jump 6 · use-guest-list (request-gate) 4 · api-error 6 · auth 5 · add-guest-shortcut 17 · party-colors 7 |
 | `vitest.setup.ts` | Per-worker Postgres schema `test_w<N>` via `search_path` on `DATABASE_URL`; loads `ADMIN_SESSION_SECRET` from `.env.local` (fixed fallback) |
 | `DEPLOYMENT.md` | Deployment + env vars (incl. required `ADMIN_SESSION_SECRET`) |
@@ -101,12 +105,11 @@ Stack notes: `motion` 13 — package name `motion`, imported as `motion/react` (
 - Server pages are `force-dynamic`; first paint carries no entrance animation (LCP); motion only after first paint, zeroed for reduced motion.
 - Validation: reject blank values after trim; errors clear and local to the field; never expose raw DB errors. Destructive actions need confirmation.
 - Unknowns → ask; don't guess product scope.
-- Tech debt (2026-09-20): the guest filter toolbar UI now exists in three views (guests-view, analytics-view, daftar-view). Extracting a shared filter component is a separate future task — do not extract opportunistically inside unrelated changes.
+- Filter seam (2026-10-31): the control surface lives once in `src/components/guest-filter-fields.tsx` (+ `useGuestFilter`); guests, daftar, and analytics all render it. Each view still owns its wrapper, Reset, and count line.
 
 ## Open follow-ups
 
 (Recording only — this list is not a backlog; each item starts with its own decision. Task.md was removed deliberately in 5329087 and stays removed.)
 
-1. **Filter toolbar duplicated in 3 views** (see Tech debt above — one entry, same item).
-2. **content-visibility on /daftar** — only if measured slow at ~3000 guests; not implemented in v1.
-3. **Production accepts default `admin` / `admin`** — found 2026-10-28 by driving the live `/login` form: `ADMIN_USERNAME`/`ADMIN_PASSWORD` are unset on Vercel, so `src/lib/session.ts` falls back to `"admin"`. Guest PII (422 entries incl. addresses) is readable by any visitor. Fix: set both vars on the Vercel project and redeploy (env changes need a new build), verify `admin`/`admin` is rejected, then rotate `ADMIN_SESSION_SECRET` to kill any already-issued session cookie. Status: ACCEPTED RISK 2026-10-31 — single-user personal deployment; do not implement unless the app is shared.
+1. **content-visibility on /daftar** — only if measured slow at ~3000 guests; not implemented in v1.
+2. **Production accepts default `admin` / `admin`** — found 2026-10-28 by driving the live `/login` form: `ADMIN_USERNAME`/`ADMIN_PASSWORD` are unset on Vercel, so `src/lib/session.ts` falls back to `"admin"`. Guest PII (422 entries incl. addresses) is readable by any visitor. Fix: set both vars on the Vercel project and redeploy (env changes need a new build), verify `admin`/`admin` is rejected, then rotate `ADMIN_SESSION_SECRET` to kill any already-issued session cookie. Status: ACCEPTED RISK 2026-10-31 — single-user personal deployment; do not implement unless the app is shared.
