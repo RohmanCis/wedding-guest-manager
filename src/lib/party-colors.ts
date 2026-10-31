@@ -137,9 +137,18 @@ export function hexFor(kind: "party" | "group", name: string): string {
   return kind === "party" ? partyHex(name) : colorForGroup(name).dot;
 }
 
+/**
+ * Named-lookup key: trim, then drop one trailing "(…)" suffix, so
+ * "Groom (Rohman)" resolves as "Groom". Parens mid-name are untouched.
+ * Fallback hashing still uses the raw name — custom categories keep their hue.
+ */
+function baseName(name: string): string {
+  return name.trim().replace(/\s*\([^()]*\)$/, "");
+}
+
 /** Party color identity. Groups resolve through colorForGroup instead. */
 export function colorFor(name: string): CategoryColor {
-  const hit = partyColors[name];
+  const hit = partyColors[baseName(name)];
   if (hit) return hit;
   // Deterministic fallback for user-created categories.
   let h = 0;
@@ -199,7 +208,7 @@ function lighten(hex: string, amount = 0.45): string {
 
 export function colorForGroup(name: string): GroupColor {
   const hex =
-    groupColorHex[name] ?? GROUP_FALLBACK[hashName(name) % GROUP_FALLBACK.length];
+    groupColorHex[baseName(name)] ?? GROUP_FALLBACK[hashName(name) % GROUP_FALLBACK.length];
   return { dot: hex, bg: `${hex}26`, text: lighten(hex) };
 }
 
@@ -240,10 +249,10 @@ const ICON_FALLBACK: LucideIcon[] = [
 
 /** Party icon identity. */
 export function iconFor(name: string): LucideIcon {
-  return PARTY_ICONS[name] ?? ICON_FALLBACK[hashName(name) % ICON_FALLBACK.length];
+  return PARTY_ICONS[baseName(name)] ?? ICON_FALLBACK[hashName(name) % ICON_FALLBACK.length];
 }
 
 /** Group icon identity. */
 export function iconForGroup(name: string): LucideIcon {
-  return GROUP_ICONS[name] ?? ICON_FALLBACK[hashName(name) % ICON_FALLBACK.length];
+  return GROUP_ICONS[baseName(name)] ?? ICON_FALLBACK[hashName(name) % ICON_FALLBACK.length];
 }
