@@ -2,22 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem
-} from "@/components/ui/select";
 import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CategoryDot, CategoryIcon } from "@/components/ui/category-badge";
+import { GuestFilterFields } from "@/components/guest-filter-fields";
 import { TopBar } from "@/components/app-shell";
 import { useGuestList } from "@/hooks/use-guest-list";
+import { useGuestFilter } from "@/hooks/use-guest-filter";
 import { sortGuests, DEFAULT_SORT } from "@/lib/guest-sort";
 import { groupGuests } from "@/lib/group-guests";
-import { Search, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 
 interface Ref {
   id: string;
@@ -36,8 +30,6 @@ interface Guest {
   group_name: string;
 }
 
-const ALL = "__all__";
-
 export default function DaftarView({
   initialParties,
   initialGroups,
@@ -47,9 +39,16 @@ export default function DaftarView({
   initialGroups: Ref[];
   initialGuests: Guest[];
 }) {
-  const [search, setSearch] = useState("");
-  const [partyId, setPartyId] = useState("");
-  const [groupId, setGroupId] = useState("");
+  const {
+    search,
+    setSearch,
+    partyId,
+    setPartyId,
+    groupId,
+    setGroupId,
+    reset,
+    hasFilter
+  } = useGuestFilter();
   const [mode, setMode] = useState<"party" | "group">("party");
   // Read-only page: categories only change on /categories, no reload needed.
   const [parties] = useState<Ref[]>(initialParties);
@@ -61,8 +60,6 @@ export default function DaftarView({
     groupId,
     initialGuests
   });
-
-  const hasFilter = !!(search.trim() || partyId || groupId);
 
   // Explicit name-asc: server already returns this order.
   const sorted = useMemo(() => sortGuests(guests, DEFAULT_SORT), [guests]);
@@ -77,12 +74,6 @@ export default function DaftarView({
   );
 
   const total = parties.reduce((sum, p) => sum + (p.used ?? 0), 0);
-
-  function resetFilters() {
-    setSearch("");
-    setPartyId("");
-    setGroupId("");
-  }
 
   return (
     <>
@@ -107,61 +98,18 @@ export default function DaftarView({
       </TopBar>
       <main className="space-y-5 p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          <div className="relative w-full sm:w-auto">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
-              aria-hidden="true"
-            />
-            <Input
-              aria-label="Cari nama"
-              className="w-full pl-9 sm:w-56"
-              placeholder="Cari nama..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <Select
-            value={partyId || ALL}
-            onValueChange={(v) => setPartyId(v === ALL ? "" : v)}
-          >
-            <SelectTrigger aria-label="Filter party" className="w-full sm:w-44">
-              <SelectValue placeholder="Party" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Semua party</SelectItem>
-              {parties.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  <span className="flex items-center gap-2">
-                    <CategoryDot kind="party" name={p.name} />
-                    <CategoryIcon kind="party" name={p.name} />
-                    {p.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={groupId || ALL}
-            onValueChange={(v) => setGroupId(v === ALL ? "" : v)}
-          >
-            <SelectTrigger aria-label="Filter group" className="w-full sm:w-44">
-              <SelectValue placeholder="Group" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Semua group</SelectItem>
-              {groups.map((g) => (
-                <SelectItem key={g.id} value={g.id}>
-                  <span className="flex items-center gap-2">
-                    <CategoryDot kind="group" name={g.name} />
-                    <CategoryIcon kind="group" name={g.name} />
-                    {g.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <GuestFilterFields
+            search={search}
+            partyId={partyId}
+            groupId={groupId}
+            onSearchChange={setSearch}
+            onPartyChange={setPartyId}
+            onGroupChange={setGroupId}
+            parties={parties}
+            groups={groups}
+          />
           {hasFilter && (
-            <Button variant="ghost" size="sm" onClick={resetFilters}>
+            <Button variant="ghost" size="sm" onClick={reset}>
               <RotateCcw aria-hidden="true" />
               Reset
             </Button>
@@ -185,7 +133,7 @@ export default function DaftarView({
               title="Tidak ada hasil"
               description="Tidak ada tamu yang cocok dengan filter saat ini."
               action={
-                <Button variant="secondary" onClick={resetFilters}>
+                <Button variant="secondary" onClick={reset}>
                   <RotateCcw aria-hidden="true" />
                   Reset filter
                 </Button>

@@ -2,34 +2,26 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem
-} from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/loading";
 import { TopBar } from "@/components/app-shell";
 import { AnalyticsBarChart } from "@/components/analytics-bar-chart";
+import { GuestFilterFields } from "@/components/guest-filter-fields";
 import { motion, AnimatePresence } from "motion/react";
 import { useAnalyticsData } from "@/hooks/use-analytics-data";
+import { useGuestFilter } from "@/hooks/use-guest-filter";
 import type { AnalyticsGuest } from "@/hooks/use-analytics-data";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { getVariants } from "@/lib/animation-variants";
-import { Search, RotateCcw, ChevronDown } from "lucide-react";
+import { RotateCcw, ChevronDown } from "lucide-react";
 
 interface Ref {
   id: string;
   name: string;
 }
-
-const ALL = "__all__";
 
 export default function AnalyticsView({
   initialParties,
@@ -40,9 +32,16 @@ export default function AnalyticsView({
   initialGroups: Ref[];
   initialGuests: AnalyticsGuest[];
 }) {
-  const [search, setSearch] = useState("");
-  const [partyId, setPartyId] = useState("");
-  const [groupId, setGroupId] = useState("");
+  const {
+    search,
+    setSearch,
+    partyId,
+    setPartyId,
+    groupId,
+    setGroupId,
+    reset,
+    hasFilter
+  } = useGuestFilter();
   const [mode, setMode] = useState<"party" | "group">("party");
   const [parties, setParties] = useState<Ref[]>(initialParties);
   const [groups, setGroups] = useState<Ref[]>(initialGroups);
@@ -59,58 +58,23 @@ export default function AnalyticsView({
   const reducedMotion = useReducedMotion();
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const hasFilter = !!(search.trim() || partyId || groupId);
   const data = mode === "party" ? byParty : byGroup;
 
   const filterFields = (
     <>
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
-          aria-hidden="true"
-        />
-        <Input
-          aria-label="Cari nama"
-          className="pl-9"
-          placeholder="Cari nama..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-      <Select
-        value={partyId || ALL}
-        onValueChange={(v) => setPartyId(v === ALL ? "" : v)}
-      >
-        <SelectTrigger aria-label="Filter party" className="w-full">
-          <SelectValue placeholder="Party" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>Semua party</SelectItem>
-          {parties.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
-              {p.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select
-        value={groupId || ALL}
-        onValueChange={(v) => setGroupId(v === ALL ? "" : v)}
-      >
-        <SelectTrigger aria-label="Filter group" className="w-full">
-          <SelectValue placeholder="Group" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>Semua group</SelectItem>
-          {groups.map((g) => (
-            <SelectItem key={g.id} value={g.id}>
-              {g.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <GuestFilterFields
+        layout="stacked"
+        search={search}
+        partyId={partyId}
+        groupId={groupId}
+        onSearchChange={setSearch}
+        onPartyChange={setPartyId}
+        onGroupChange={setGroupId}
+        parties={parties}
+        groups={groups}
+      />
       {hasFilter && (
-        <Button variant="ghost" size="sm" onClick={resetFilters}>
+        <Button variant="ghost" size="sm" onClick={reset}>
           <RotateCcw aria-hidden="true" />
           Reset
         </Button>
@@ -118,12 +82,6 @@ export default function AnalyticsView({
       <p className="text-sm text-secondary">Menampilkan {totalGuests} tamu</p>
     </>
   );
-
-  function resetFilters() {
-    setSearch("");
-    setPartyId("");
-    setGroupId("");
-  }
 
   return (
     <>

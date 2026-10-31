@@ -14,6 +14,8 @@ import {
   type SortState
 } from "@/lib/guest-sort";
 import { useGuestList } from "@/hooks/use-guest-list";
+import { useGuestFilter } from "@/hooks/use-guest-filter";
+import { GuestFilterFields } from "@/components/guest-filter-fields";
 import { useAddGuestShortcut } from "@/hooks/use-add-guest-shortcut";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
@@ -52,7 +54,6 @@ import { colorFor } from "@/lib/party-colors";
 import { TopBar } from "@/components/app-shell";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import {
-  Search,
   Plus,
   ChevronDown,
   ArrowUp,
@@ -108,7 +109,6 @@ const EMPTY: FormState = {
   groupId: "",
   pax: 1
 };
-const ALL = "__all__";
 const PAX_OPTIONS = [1, 2, 3, 4];
 
 /** Sortable table header: full-cell button (≥44px hit area via -m-3 p-3),
@@ -180,9 +180,16 @@ export default function GuestsView({
 }) {
   const [parties, setParties] = useState<Ref[]>(initialParties);
   const [groups, setGroups] = useState<Ref[]>(initialGroups);
-  const [search, setSearch] = useState("");
-  const [partyId, setPartyId] = useState("");
-  const [groupId, setGroupId] = useState("");
+  const {
+    search,
+    setSearch,
+    partyId,
+    setPartyId,
+    groupId,
+    setGroupId,
+    reset,
+    hasFilter
+  } = useGuestFilter();
   const { guests, isLoading, error, refresh } = useGuestList<Guest>({
     search,
     partyId,
@@ -303,8 +310,6 @@ export default function GuestsView({
     if (step.type === "page") setCurrentPage(step.page);
   }, [newGuestId, isLoading, sorted, safePage, showAll]);
 
-  const hasFilter = !!(search.trim() || partyId || groupId);
-
   function toggleSort(key: SortKey) {
     // Same key → flip direction; new key → ascending.
     setSort((s) =>
@@ -312,12 +317,6 @@ export default function GuestsView({
         ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
         : { key, dir: "asc" }
     );
-  }
-
-  function resetFilters() {
-    setSearch("");
-    setPartyId("");
-    setGroupId("");
   }
 
   function buildCsvUrl(scope: "all" | "filtered") {
@@ -531,62 +530,19 @@ export default function GuestsView({
         </section>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          <div className="relative w-full sm:w-auto">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
-              aria-hidden="true"
-            />
-            <Input
-              ref={searchInputRef}
-              aria-label="Cari nama"
-              className="w-full pl-9 sm:w-56"
-              placeholder="Cari nama..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <Select
-            value={partyId || ALL}
-            onValueChange={(v) => setPartyId(v === ALL ? "" : v)}
-          >
-            <SelectTrigger aria-label="Filter party" className="w-full sm:w-44">
-              <SelectValue placeholder="Party" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Semua party</SelectItem>
-              {parties.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  <span className="flex items-center gap-2">
-                    <CategoryDot kind="party" name={p.name} />
-                    <CategoryIcon kind="party" name={p.name} />
-                    {p.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={groupId || ALL}
-            onValueChange={(v) => setGroupId(v === ALL ? "" : v)}
-          >
-            <SelectTrigger aria-label="Filter group" className="w-full sm:w-44">
-              <SelectValue placeholder="Group" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Semua group</SelectItem>
-              {groups.map((g) => (
-                <SelectItem key={g.id} value={g.id}>
-                  <span className="flex items-center gap-2">
-                    <CategoryDot kind="group" name={g.name} />
-                    <CategoryIcon kind="group" name={g.name} />
-                    {g.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <GuestFilterFields
+            search={search}
+            partyId={partyId}
+            groupId={groupId}
+            onSearchChange={setSearch}
+            onPartyChange={setPartyId}
+            onGroupChange={setGroupId}
+            parties={parties}
+            groups={groups}
+            searchRef={searchInputRef}
+          />
           {hasFilter && (
-            <Button variant="ghost" size="sm" onClick={resetFilters}>
+            <Button variant="ghost" size="sm" onClick={reset}>
               <RotateCcw aria-hidden="true" />
               Reset
             </Button>
@@ -648,7 +604,7 @@ export default function GuestsView({
               title="Tidak ada hasil"
               description="Tidak ada tamu yang cocok dengan filter saat ini."
               action={
-                <Button variant="secondary" onClick={resetFilters}>
+                <Button variant="secondary" onClick={reset}>
                   <RotateCcw aria-hidden="true" />
                   Reset filter
                 </Button>
