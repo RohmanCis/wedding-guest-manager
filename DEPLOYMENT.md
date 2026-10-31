@@ -119,8 +119,8 @@ postgresql://postgres.abcdefgh:<PASSWORD>@aws-0-ap-southeast-1.pooler.supabase.c
 Replace `<PASSWORD>` with your database password. Keep this string — it becomes
 `DATABASE_URL` in Phase 4.
 
-No tables are created manually — the app creates and seeds its own tables on first
-start (same as it does locally today).
+No tables or indexes are created manually — the app creates, indexes, and seeds its own
+tables on first start (same as it does locally today).
 
 ---
 
