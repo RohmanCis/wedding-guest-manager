@@ -80,7 +80,9 @@ The MVP is successful when the administrator can manually build and maintain the
 - Duplicate blocking by normalized guest name.
 - Dashboard/list summary counts.
 - CSV export of all guests.
+- XLSX export of all guests (explicit user decision, 2026-11-01).
 - CSV export of the current filtered result set.
+- XLSX export of the current filtered result set (explicit user decision, 2026-11-01).
 - Empty states, validation, error states, and confirmation for destructive actions.
 
 ### 4.2 Explicitly Out of Scope
@@ -271,17 +273,17 @@ The administrator can export:
 1. **All Guests**.
 2. **Filtered Guests**, meaning the current result set after applying search and/or filters.
 
-CSV export must reflect the visible filtering criteria at the moment export is initiated.
+CSV and XLSX export must reflect the visible filtering criteria at the moment export is initiated. XLSX is an additional format of the same scope (explicit user decision, 2026-11-01); the CSV format itself is unchanged.
 
 ### BR-013 Export Fields
 
-CSV export should include at minimum:
+CSV and XLSX export should include at minimum:
 
 ```text
 Name,Address,Party,Group,Pax
 ```
 
-The exported CSV must contain one guest per row.
+Both exports must contain one guest per row. In XLSX, `Pax` is a numeric cell and every other cell is plain text.
 
 ---
 
@@ -385,11 +387,11 @@ The administrator can:
 
 The UI should keep these operations compact and simple.
 
-### FR-013 CSV Export
+### FR-013 CSV and XLSX Export
 
-The administrator can export all guests as CSV.
+The administrator can export all guests as CSV or XLSX.
 
-The administrator can export the current filtered result as CSV.
+The administrator can export the current filtered result as CSV or XLSX.
 
 Export must preserve the active query/filter semantics, and the filtered export must follow the active sort order (FR-016).
 
@@ -416,7 +418,7 @@ The administrator can sort the guest table by clicking the column headers: `Nama
 - Default order is `name asc` — identical to the previous fixed server order; the initial view is unchanged.
 - Sorting is instant and client-side (no refetch); it must stay consistent with pagination, duplicate jump (BR-007), and new-guest flash.
 - `pax` compares numerically; string columns compare with the `id` locale; ties break on name ascending.
-- The filtered CSV export follows the on-screen sort order (hybrid: client sort, server-side ORDER BY for export only).
+- The filtered CSV and XLSX export follow the on-screen sort order (hybrid: client sort, server-side ORDER BY for export only).
 - Changing sort resets pagination to page 1.
 - Out of scope: multi-column sort, URL-synced sort state. (A grouped/sectioned presentation now exists as the separate read-only `/daftar` page per FR-017 — user decision 2026-09-20; the Guests table itself stays flat.)
 
@@ -512,7 +514,7 @@ Do not build drag-and-drop taxonomy management, nested categories, permissions, 
 - Duplicate prevention must not rely only on client-side validation.
 - Party and Group foreign keys must be valid.
 - Guest creation/update must be atomic.
-- CSV export must read from the same canonical guest data source used by the list.
+- CSV and XLSX export must read from the same canonical guest data source used by the list.
 - Destructive category deletion must not leave dangling foreign keys.
 
 Implementation note: the exact normalization mechanism may depend on the chosen database stack, but application behavior must remain consistent with BR-006 and BR-007.
@@ -538,7 +540,7 @@ Charts are optional and must not be introduced unless they materially improve us
 
 ---
 
-## 11. CSV Requirements
+## 11. Export Requirements
 
 ### Export All
 
@@ -570,6 +572,15 @@ Use deterministic human-readable names such as:
 wedding-guests-all-YYYY-MM-DD.csv
 wedding-guests-filtered-YYYY-MM-DD.csv
 ```
+
+### XLSX
+
+XLSX export mirrors the CSV scope, filter/sort semantics, and column order exactly (explicit user decision, 2026-11-01). CSV output does not change.
+
+- One sheet named `Tamu`, one guest per row.
+- `Pax` is a numeric cell; all other columns are plain text (values such as `=1+1` must never become formulas).
+- Header row bold, first row frozen, autofilter enabled, readable column widths (Address widest).
+- Filenames `wedding-guests-all-YYYY-MM-DD.xlsx` and `wedding-guests-filtered-YYYY-MM-DD.xlsx`.
 
 ---
 
@@ -604,7 +615,7 @@ wedding-guests-filtered-YYYY-MM-DD.csv
 - `pax` sorts numerically (2 before 10), ties break on name ascending.
 - Sorting never refetches and never breaks duplicate jump, new-guest flash, pagination numbering, or "Tampilkan Semua".
 - Changing sort or filters returns to page 1.
-- Filtered CSV export rows land in the on-screen sort order.
+- Filtered CSV and XLSX export rows land in the on-screen sort order.
 
 ### Daftar (Sectioned View)
 
@@ -631,6 +642,7 @@ wedding-guests-filtered-YYYY-MM-DD.csv
 - Export Filtered contains only the active filtered result set.
 - CSV columns are `Name,Address,Party,Group,Pax`.
 - Exported CSV is UTF-8.
+- XLSX export contains the same columns and the same rows as the CSV export for the same scope (explicit user decision, 2026-11-01); `Pax` is numeric, all other cells are text, and the header row is bold, frozen, and filterable.
 
 ### Scope Control
 
