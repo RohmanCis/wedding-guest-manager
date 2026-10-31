@@ -195,6 +195,10 @@ The UI is already mobile-first (bottom nav, sticky action bar, touch targets).
 Optional hardening later: change the login password by updating `ADMIN_PASSWORD` on Vercel
 (Project → Settings → Environment Variables → Redeploy). Old sessions stop working automatically.
 
+Security headers ship from `next.config.mjs` (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, CSP `frame-ancestors 'none'; base-uri 'self'; object-src 'none'`).
+After a deploy, confirm with `curl -I https://<your-app>/login`.
+
 ---
 
 ## Phase 6 — Daily use & maintenance
