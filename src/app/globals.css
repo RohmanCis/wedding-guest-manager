@@ -160,3 +160,9 @@
     outline-offset: 2px;
   }
 }
+
+/* perf hint for the read-only scan page; `auto` replaces the 800px guess with the measured height after first render */
+.section-cv {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
+}

@@ -151,7 +151,7 @@ export default function DaftarView({
               {isLoading ? "Memuat daftar tamu" : ""}
             </p>
             {sections.map((section) => (
-              <section key={section.name} aria-label={section.name}>
+              <section key={section.name} aria-label={section.name} className="section-cv">
                 <div className="sticky top-12 z-[5] flex h-10 items-center justify-between gap-2 border-b border-default bg-surface-1 px-3">
                   <span className="flex items-center gap-1.5">
                     <CategoryDot kind={mode} name={section.name} />

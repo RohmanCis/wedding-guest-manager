@@ -14,6 +14,8 @@ Also 2026-10-31, after `34af317`: the filter control surface was extracted to `G
 
 Live-verified 2026-10-31 by the owner in production (`34a9226`, real devices): the four security headers arrive, boot after the `lower(name)` indexes is clean, stat cards shrink with the active filter, a mutation followed by a revisit shows fresh data (no Router Cache staleness), and on real iOS Safari the sticky TopBar, Add to Home Screen, and the `/daftar` search/Party/Group filters all behave.
 
+2026-11-01, `/daftar` first-load work (owner report: "feels slow" at ~700 guests; no benchmark run — the local build/Playwright measurement was aborted as ineffective). Two changes, neither touches server latency: (a) `src/app/(app)/daftar/loading.tsx` — first `loading.tsx` in the app; navigation to the route now paints a chrome-matched skeleton immediately instead of a silent stall, and it gives Next a prefetch boundary on a `force-dynamic` route; (b) `.section-cv` in `globals.css` (`content-visibility: auto; contain-intrinsic-size: auto 800px`) applied to the `<section>` in `daftar-view.tsx:154`, so first paint lays out only on-screen sections. Sticky headers, scrollbar height, Ctrl+F reveal, and reduced-motion shimmer all still need the owner's manual pass (`npm run build && npm start`) — see the test steps in the task thread. typecheck / **144** tests / build green. Not yet verified in production.
+
 Source of truth:
 - `PRD-Wedding-Guest-Manager.md` — product spec. Read before non-trivial work. Do not invent product scope.
 - `DESIGN.md` (+ `.impeccable/design.json`) — design system. Read before UI work; keep in sync when the system changes.
@@ -83,7 +85,7 @@ A request that changes guest identity, party/group cardinality, required guest f
 | `src/app/(app)/page.tsx` → `guests-view.tsx` | Guest dashboard: stats (Total / Total Pax / party cards all reflect the active filter; the empty state branches on the global count), filter toolbar (search debounced 300ms), sortable table (client-side, default `name asc`) with 10-row pagination + "Tampilkan Semua" toggle, modals, BR-007 jump, mobile sticky action bar. Fetch pipeline lives in `useGuestList` — the view never hand-rolls fetch/debounce/race handling. Every index-based consumer reads the `sorted` array, never raw `guests` |
 | `src/app/(app)/categories/*` | Category management (server page → client view) |
 | `src/app/(app)/analytics/*` | Analytics horizontal bar chart, Party/Group modes (server page → client view, read-only) |
-| `src/app/(app)/daftar/*` | Read-only sectioned scan view (server page → client view, Party/Group mode toggle, shared filter triple, no pagination) |
+| `src/app/(app)/daftar/*` | Read-only sectioned scan view (server page → client view, Party/Group mode toggle, shared filter triple, no pagination). `loading.tsx` = chrome-matched skeleton (first loading boundary in the app). Sections carry `.section-cv` (`content-visibility: auto`) — perf hint only, never apply to the flat guest table on `/` |
 | `src/app/login/page.tsx` | Login; after success does a FULL page navigation (`window.location.href`), never `router.push`/`refresh` |
 | `src/app/api/guests/route.ts` | GET list/csv · POST · PUT · DELETE |
 | `src/app/api/categories/route.ts` | GET · POST · PUT · DELETE |
@@ -111,5 +113,5 @@ Stack notes: `motion` 13 — package name `motion`, imported as `motion/react` (
 
 (Recording only — this list is not a backlog; each item starts with its own decision. Task.md was removed deliberately in 5329087 and stays removed.)
 
-1. **content-visibility on /daftar** — only if measured slow at ~3000 guests; not implemented in v1.
+1. **`/daftar` first-load polish** — `loading.tsx` skeleton + `.section-cv` shipped 2026-11-01 without a benchmark. Owner manual pass still outstanding: sticky headers under `content-visibility`, scrollbar height stability (`contain-intrinsic-size: auto 800px` guess), Ctrl+F reveal, reduced-motion shimmer, 375px layout shift. If still slow, the next levers in order: strip unused `party_id`/`group_id` from the `/daftar` props, merge the `parties`+`groups` queries into one round trip, stream `listGuests()` inside a `Suspense` boundary (the only one that helps cold load — `loading.tsx` only helps navigation). `loading.tsx` is still missing on `/`, `/analytics`, `/categories`.
 2. **Production accepts default `admin` / `admin`** — found 2026-10-28 by driving the live `/login` form: `ADMIN_USERNAME`/`ADMIN_PASSWORD` are unset on Vercel, so `src/lib/session.ts` falls back to `"admin"`. Guest PII (422 entries incl. addresses) is readable by any visitor. Fix: set both vars on the Vercel project and redeploy (env changes need a new build), verify `admin`/`admin` is rejected, then rotate `ADMIN_SESSION_SECRET` to kill any already-issued session cookie. Status: ACCEPTED RISK 2026-10-31 — single-user personal deployment; do not implement unless the app is shared.
