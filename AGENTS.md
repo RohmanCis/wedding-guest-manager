@@ -67,7 +67,7 @@ A request that changes guest identity, party/group cardinality, required guest f
 | `src/lib/normalize.ts` | `normalizeName` (BR-006), error classes, and `errorPayload` — the single source of the API error wire contract (409 duplicate + existingId / 404 / 400 + field / 500) |
 | `src/lib/api-error.ts` | Thin `NextResponse` wrapper over `errorPayload` — never hand-builds error JSON |
 | `src/lib/categories.ts` | Party/Group CRUD, rename, safe-delete guard |
-| `src/lib/db.ts` | postgres.js pool (`DATABASE_URL` required, `max:1`, `prepare:false`), schema + seed; `name_norm` UNIQUE |
+| `src/lib/db.ts` | postgres.js pool (`DATABASE_URL` required, `max:1`, `prepare:false`), schema + seed; `name_norm` UNIQUE; `lower(name)` UNIQUE index on `parties`/`groups` |
 | `src/lib/session.ts` | Cookie session; `ADMIN_SESSION_SECRET` fail-closed (empty fallback rejects all sessions) |
 | `src/lib/auth.ts` | Credential check (timing-safe) + shared API `guard()` |
 | `src/lib/client.ts` / `api-error.ts` | Client fetch helpers; `ApiError` carries `existingId` typed from the shared `DuplicateNamePayload` contract |
