@@ -23,8 +23,6 @@ interface Guest {
   id: string;
   name: string;
   address: string;
-  party_id: string;
-  group_id: string;
   pax: number;
   party_name: string;
   group_name: string;
