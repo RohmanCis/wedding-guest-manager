@@ -84,7 +84,7 @@ export function useGuestList<T extends { id: string }>({
     } finally {
       if (gate.accept(req)) setIsLoading(false);
     }
-  }, [debouncedSearch, partyId, groupId, sort, dir]);
+  }, [debouncedSearch, partyId, groupId, sort, dir, gate]);
 
   // SSR data is already on screen — skip the redundant initial fetch.
   const skipInitialFetch = useRef(!!initialGuests);
