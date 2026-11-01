@@ -19,6 +19,18 @@ export function filterParams(filter: GuestFilter): URLSearchParams {
   return qs;
 }
 
+/**
+ * Export scope: `scope=all` means "every guest", so only sort/dir survive —
+ * search/party/group are dropped. Any other scope keeps the filter as-is.
+ */
+export function filterForScope(
+  scope: string | null,
+  filter: GuestFilter
+): GuestFilter {
+  if (scope === "all") return { sort: filter.sort, dir: filter.dir };
+  return filter;
+}
+
 export function parseFilter(sp: URLSearchParams): GuestFilter {
   const sort = sp.get("sort");
   const dir = sp.get("dir");

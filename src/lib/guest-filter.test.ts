@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { filterParams, parseFilter } from "./guest-filter";
+import { filterParams, parseFilter, filterForScope } from "./guest-filter";
 
 describe("filterParams (encode)", () => {
   it("encodes all three params", () => {
@@ -30,6 +30,30 @@ describe("parseFilter (decode)", () => {
   it("reads all three params", () => {
     const sp = new URLSearchParams("search=budi&partyId=p1&groupId=g1");
     expect(parseFilter(sp)).toEqual({ search: "budi", partyId: "p1", groupId: "g1" });
+  });
+});
+
+describe("filterForScope", () => {
+  it("scope=all keeps only sort/dir and drops search/party/group", () => {
+    expect(
+      filterForScope("all", {
+        search: "budi",
+        partyId: "p1",
+        groupId: "g1",
+        sort: "pax",
+        dir: "desc"
+      })
+    ).toEqual({ sort: "pax", dir: "desc" });
+  });
+
+  it("scope=all with an empty filter is an empty object", () => {
+    expect(filterForScope("all", {})).toEqual({});
+  });
+
+  it("scope=filtered and null leave the filter unchanged", () => {
+    const filter = { search: "budi", partyId: "p1", groupId: "g1" };
+    expect(filterForScope("filtered", filter)).toEqual(filter);
+    expect(filterForScope(null, filter)).toEqual(filter);
   });
 });
 

@@ -9,7 +9,8 @@ import {
   exportGuestsXlsx,
   GuestInput
 } from "@/lib/guests";
-import { parseFilter } from "@/lib/guest-filter";
+import { parseFilter, filterForScope } from "@/lib/guest-filter";
+import { exportFilename } from "@/lib/export-filename";
 import { errorResponse } from "@/lib/api-error";
 
 export async function GET(req: NextRequest) {
@@ -19,25 +20,25 @@ export async function GET(req: NextRequest) {
   const filter = parseFilter(sp);
   if (sp.get("csv") === "1") {
     const scope = sp.get("scope") === "all" ? "all" : "filtered";
-    const base = `wedding-guests-${scope}-${new Date().toISOString().slice(0, 10)}`;
+    const exportFilter = filterForScope(sp.get("scope"), filter);
     if (sp.get("format") === "xlsx") {
-      const xlsx = await exportGuestsXlsx(filter);
+      const xlsx = await exportGuestsXlsx(exportFilter);
       return new NextResponse(new Uint8Array(xlsx), {
         status: 200,
         headers: {
           "Content-Type":
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="${base}.xlsx"`,
+          "Content-Disposition": `attachment; filename="${exportFilename(scope, "xlsx")}"`,
           "Cache-Control": "no-store"
         }
       });
     }
-    const csv = await exportGuestsCsv(filter);
+    const csv = await exportGuestsCsv(exportFilter);
     return new NextResponse(csv, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="wedding-guests-${scope}-${new Date().toISOString().slice(0, 10)}.csv"`
+        "Content-Disposition": `attachment; filename="${exportFilename(scope, "csv")}"`
       }
     });
   }
