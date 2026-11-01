@@ -175,6 +175,11 @@ seeds default Parties/Groups automatically).
 
 4. **Deploy** → wait ~1 min → you get `https://wedding-guest-manager.vercel.app`.
    Note: preview deployments (branch pushes) share the production `DATABASE_URL` — anything you do on a preview URL hits live data; test read-only.
+
+   Login **fails closed**: if `ADMIN_USERNAME` or `ADMIN_PASSWORD` is empty, or
+   `ADMIN_SESSION_SECRET` is empty, no one can log in — there is no default
+   username/password. That means Preview and Development deployments need these
+   env vars filled too, not just Production.
 5. Open it. Log in. The tables are created and seeded on first request.
 
 Every future `git push` to `main` redeploys automatically.

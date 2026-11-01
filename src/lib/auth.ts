@@ -11,6 +11,9 @@ import {
 export { SESSION_COOKIE, sessionToken, validSession } from "./session";
 
 export function verifyCredentials(user: string, pass: string): boolean {
+  // No configured credentials (or secret) means no login is possible — an
+  // empty env must never match empty input.
+  if (!ADMIN_USER || !ADMIN_PASS || !SESSION_SECRET) return false;
   const digest = (s: string) =>
     crypto.createHash("sha256").update(s).digest();
   const a = digest(`${user}:${pass}:${SESSION_SECRET}`);
